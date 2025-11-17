@@ -1,16 +1,15 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-import sys
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.patches import FancyBboxPatch
 
 # === DASHBOARD ===
-class DashboardWindow(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self, username):
         super().__init__()
-        self.setWindowTitle("ClassTrack - Dashboard")
+        self.setWindowTitle("ClassTrack - Main Window")
         self.setGeometry(100, 100, 1250, 750)
         self.setStyleSheet("background-color: #E7E7DF;")
 
@@ -191,7 +190,7 @@ class DashboardWindow(QMainWindow):
         ax.set_facecolor("none")
 
         labels = ["BSIT-1A", "BSIT-2A", "BSCIS-2A", "BSCIS-2B"]
-        values = [28, 25, 30, 27]
+        values = [28, 25, 3, 27]
         colors = ["#000000", "#C8B6FF", "#9A7FF0", "#836FFF"]
 
         bars = ax.bar(labels, values, color=colors)
