@@ -2,14 +2,18 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from ui import MainWindow
+from ui.signup_dialog import SignupDialog
+from ui.forgot_password_dialog import ForgotPasswordDialog
+from utils import DatabaseConnection
 
 
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ClassTrack - Log In")
-        self.setWindowIcon(QIcon("image/class.png"))  # Add window icon
+        self.setWindowIcon(QIcon("image/class.png"))
         self.setStyleSheet("background-color: #E7E9E5;")
+        self.db = DatabaseConnection()
 
         # Main layout
         main_layout = QHBoxLayout(self)
@@ -41,16 +45,16 @@ class LoginWindow(QWidget):
         self.user_input = QLineEdit()
         self.user_input.setPlaceholderText("Enter your username")
         self.user_input.setStyleSheet("border: none; border-bottom: 1px solid #000; padding: 12px; font-size: 16px; padding-right: 30px;")
-        self.user_input.returnPressed.connect(lambda: self.password_input.setFocus()) # Use "Enter" key change focus to password
+        self.user_input.returnPressed.connect(lambda: self.password_input.setFocus())
         self.user_icon = QPushButton()
         self.user_icon.setIcon(QIcon("image/profile.png"))
         self.user_icon.setIconSize(QSize(18, 18))
         self.user_icon.setCheckable(False)
         self.user_icon.setFixedSize(30, 30)
+        self.user_icon.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; background-color: #f5f5f5;")
         user_layout.addWidget(self.user_input)
         user_layout.addWidget(self.user_icon)
         
-
         password_frame = QFrame()
         password_layout = QHBoxLayout(password_frame)
         password_layout.setContentsMargins(0, 0, 0, 0)
@@ -62,9 +66,10 @@ class LoginWindow(QWidget):
         self.password_input.returnPressed.connect(self.open_dashboard)
         self.eye_btn = QPushButton()
         self.eye_btn.setIcon(QIcon("image/eye.png"))
-        self.eye_btn.setIconSize(QSize(20, 20))  # Adjust size as needed
+        self.eye_btn.setIconSize(QSize(20, 20))
         self.eye_btn.setCheckable(True)
         self.eye_btn.setFixedSize(25, 25)
+        self.eye_btn.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; background-color: #f5f5f5;")
         self.eye_btn.toggled.connect(self.toggle_password)
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.eye_btn)
@@ -73,24 +78,53 @@ class LoginWindow(QWidget):
         login_btn = QPushButton("Log In")
         login_btn.setCursor(Qt.PointingHandCursor)
         login_btn.clicked.connect(self.open_dashboard)
-        login_btn.setStyleSheet("background-color: #222; color: white; font-weight: bold; border-radius: 22px; padding: 12px; font-size: 15px;")
+        login_btn.setStyleSheet("background-color: #222; color: white; font-weight: bold; border-radius: 20px; padding: 12px; font-size: 15px;")
+        
+        # Forgot Password Link
+        forgot_btn = QPushButton("Forgot Password?")
+        forgot_btn.setCursor(Qt.PointingHandCursor)
+        forgot_btn.clicked.connect(self.open_forgot_password)
+        forgot_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #666;
+                font-size: 13px;
+                border: none;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #222;
+            }
+        """)
 
-        # Issue Section
-        issue_frame = QFrame()
-        issue_layout = QVBoxLayout(issue_frame)
-        issue_label = QLabel("Having Issues?")
-        issue_label.setAlignment(Qt.AlignCenter)
-        issue_label.setStyleSheet("font-weight: bold; font-size: 17px; color: #222;")
-        issue_text = QLabel(
-            "If you encounter login problems or system errors,\n"
-            "please report them to our admin:\n\n"
-            "📧 user: support@thynkunlimited.com\n"
-            "☎️ Contact: +63 912 345 6789\n"
-        )
-        issue_text.setAlignment(Qt.AlignCenter)
-        issue_text.setWordWrap(True)
-        issue_layout.addWidget(issue_label)
-        issue_layout.addWidget(issue_text)
+        # Sign Up Section
+        signup_frame = QFrame()
+        signup_layout = QHBoxLayout(signup_frame)
+        signup_layout.setAlignment(Qt.AlignCenter)
+        signup_layout.setSpacing(5)
+        
+        signup_label = QLabel("Don't have an account?")
+        signup_label.setStyleSheet("color: #666; font-size: 14px;")
+        
+        signup_btn = QPushButton("Sign Up")
+        signup_btn.setCursor(Qt.PointingHandCursor)
+        signup_btn.clicked.connect(self.open_signup)
+        signup_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #222;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #555;
+            }
+        """)
+        
+        signup_layout.addWidget(signup_label)
+        signup_layout.addWidget(signup_btn)
 
         # Add widgets to left layout
         left_layout.addWidget(title)
@@ -98,7 +132,8 @@ class LoginWindow(QWidget):
         left_layout.addWidget(user_frame)
         left_layout.addWidget(password_frame)
         left_layout.addWidget(login_btn)
-        left_layout.addWidget(issue_frame)
+        left_layout.addWidget(forgot_btn, alignment=Qt.AlignRight)
+        left_layout.addWidget(signup_frame)
         left_layout.addStretch()
 
         # RIGHT SIDE (decorative)
@@ -108,7 +143,7 @@ class LoginWindow(QWidget):
         right_frame.setStyleSheet("background-color: #E7E9E5;")
 
         image_label = QLabel()
-        pixmap = QPixmap("image/prof.png")  # Replace with your PNG file path
+        pixmap = QPixmap("image/prof.png")
         scaled_pixmap = pixmap.scaled(800, 800, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         image_label.setPixmap(scaled_pixmap)
         image_label.setAlignment(Qt.AlignCenter)
@@ -126,8 +161,34 @@ class LoginWindow(QWidget):
             self.password_input.setEchoMode(QLineEdit.Password)
             self.eye_btn.setIcon(QIcon("image/eye.png"))
 
+    def open_signup(self):
+        dialog = SignupDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            # Optionally auto-fill the username after successful signup
+            pass
+    
+    def open_forgot_password(self):
+        dialog = ForgotPasswordDialog(self)
+        dialog.exec_()
+
     def open_dashboard(self):
-        username = self.user_input.text() or "User"
-        self.main_window = MainWindow(username)
-        self.main_window.showMaximized()
-        self.close()
+        username = self.user_input.text()
+        password = self.password_input.text()
+        
+        # Validate inputs
+        if not username or not password:
+            QMessageBox.warning(self, "Input Error", "Please enter both username and password")
+            return
+        
+        # Validate with database
+        success, message, user_data = self.db.validate_user(username, password)
+        
+        if success:
+            QMessageBox.information(self, "Success", f"Welcome, {user_data['username']}!")
+            self.main_window = MainWindow(user_data['username'])
+            self.main_window.showMaximized()
+            self.close()
+        else:
+            QMessageBox.critical(self, "Login Failed", message)
+            self.password_input.clear()
+            self.password_input.setFocus()
