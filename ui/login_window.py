@@ -44,14 +44,13 @@ class LoginWindow(QWidget):
         user_layout.setSpacing(0)
         self.user_input = QLineEdit()
         self.user_input.setPlaceholderText("Enter your username")
-        self.user_input.setStyleSheet("border: none; border-bottom: 1px solid #000; padding: 12px; font-size: 16px; padding-right: 30px;")
+        self.user_input.setStyleSheet("border: none; border-bottom: 1px solid #000; padding: 12px; font-size: 16px; padding-right: 30px; background-color: #E7E9E5;")
         self.user_input.returnPressed.connect(lambda: self.password_input.setFocus())
         self.user_icon = QPushButton()
         self.user_icon.setIcon(QIcon("image/profile.png"))
         self.user_icon.setIconSize(QSize(18, 18))
         self.user_icon.setCheckable(False)
         self.user_icon.setFixedSize(30, 30)
-        self.user_icon.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; background-color: #f5f5f5;")
         user_layout.addWidget(self.user_input)
         user_layout.addWidget(self.user_icon)
         
@@ -62,14 +61,13 @@ class LoginWindow(QWidget):
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Enter your password")
         self.password_input.setEchoMode(QLineEdit.Password)
-        self.password_input.setStyleSheet("border: none; border-bottom: 1px solid #000; padding: 12px; font-size: 16px; padding-right: 30px;")
+        self.password_input.setStyleSheet("border: none; border-bottom: 1px solid #000; padding: 12px; font-size: 16px; padding-right: 30px; background-color: #E7E9E5;")
         self.password_input.returnPressed.connect(self.open_dashboard)
         self.eye_btn = QPushButton()
         self.eye_btn.setIcon(QIcon("image/eye.png"))
         self.eye_btn.setIconSize(QSize(20, 20))
         self.eye_btn.setCheckable(True)
         self.eye_btn.setFixedSize(25, 25)
-        self.eye_btn.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; background-color: #f5f5f5;")
         self.eye_btn.toggled.connect(self.toggle_password)
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.eye_btn)
@@ -78,7 +76,7 @@ class LoginWindow(QWidget):
         login_btn = QPushButton("Log In")
         login_btn.setCursor(Qt.PointingHandCursor)
         login_btn.clicked.connect(self.open_dashboard)
-        login_btn.setStyleSheet("background-color: #222; color: white; font-weight: bold; border-radius: 20px; padding: 12px; font-size: 15px;")
+        login_btn.setStyleSheet("background-color: #222; color: white; font-weight: bold; border-radius: 20px; padding: 12px; font-size: 15px; ")
         
         # Forgot Password Link
         forgot_btn = QPushButton("Forgot Password?")
@@ -185,7 +183,7 @@ class LoginWindow(QWidget):
         
         if success:
             QMessageBox.information(self, "Success", f"Welcome, {user_data['username']}!")
-            self.main_window = MainWindow(user_data['username'])
+            self.main_window = MainWindow(user_data['username'], user_data['user_id'])
             self.main_window.showMaximized()
             self.close()
         else:
