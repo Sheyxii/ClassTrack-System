@@ -58,5 +58,98 @@ INSERT INTO users (username, password, email) VALUES
 ('admin', 'admin123', 'admin@classtrack.com')
 ON DUPLICATE KEY UPDATE username=username;
 
--- View all users
+
+
+-- ============================================
+-- VIEW TABLES
+-- ============================================
+
+
+-- SEE ALL USERS
 SELECT * FROM users;
+
+-- SEE SECTIONS FOR SPECIFIC USER (change 'admin' to any username)
+SELECT s.*, u.username 
+FROM sections s
+JOIN users u ON s.user_id = u.user_id
+WHERE u.username = 'admin'
+AND s.is_archived = FALSE
+ORDER BY s.created_at DESC;
+
+-- SEE ALL SECTIONS (ALL USERS)
+SELECT 
+    s.section_id,
+    s.section_name,
+    u.username AS owner,
+    s.is_archived,
+    s.created_at
+FROM sections s
+JOIN users u ON s.user_id = u.user_id
+ORDER BY u.username, s.section_name;
+
+-- 4. SEE STUDENTS IN SPECIFIC SECTION (change 'BSCS 2B' to your section)
+SELECT * FROM students
+WHERE section_id = (SELECT section_id FROM sections WHERE section_name = 'BSCS 2B')
+AND is_archived = FALSE
+ORDER BY last_name, first_name;
+
+-- SEE ALL STUDENTS FOR SPECIFIC USER (change 'admin' to username)
+SELECT 
+    st.student_id,
+    st.first_name,
+    st.last_name,
+    st.grade,
+    s.section_name,
+    u.username AS teacher
+FROM students st
+JOIN sections s ON st.section_id = s.section_id
+JOIN users u ON s.user_id = u.user_id
+WHERE u.username = 'admin'
+AND st.is_archived = FALSE
+ORDER BY s.section_name, st.last_name;
+
+-- COUNT STUDENTS PER SECTION PER USER
+SELECT 
+    u.username,
+    s.section_name,
+    COUNT(st.student_id) AS student_count
+FROM sections s
+JOIN users u ON s.user_id = u.user_id
+LEFT JOIN students st ON s.section_id = st.section_id AND st.is_archived = FALSE
+WHERE s.is_archived = FALSE
+GROUP BY u.username, s.section_name
+ORDER BY u.username, s.section_name;
+
+-- SEE EVERYTHING (COMPLETE OVERVIEW)
+SELECT 
+    u.username,
+    s.section_name,
+    st.student_id,
+    CONCAT(st.first_name, ' ', st.last_name) AS student_name,
+    st.grade,
+    st.email
+FROM users u
+LEFT JOIN sections s ON u.user_id = s.user_id AND s.is_archived = FALSE
+LEFT JOIN students st ON s.section_id = st.section_id AND st.is_archived = FALSE
+ORDER BY u.username, s.section_name, st.last_name;
+
+-- COMPARE DATA BETWEEN USERS
+SELECT 
+    u.username,
+    COUNT(DISTINCT s.section_id) AS total_sections,
+    COUNT(st.student_id) AS total_students
+FROM users u
+LEFT JOIN sections s ON u.user_id = s.user_id AND s.is_archived = FALSE
+LEFT JOIN students st ON s.section_id = st.section_id AND st.is_archived = FALSE
+GROUP BY u.username
+ORDER BY u.username;
+
+-- SEE ARCHIVED DATA
+SELECT * FROM sections WHERE is_archived = TRUE;
+SELECT * FROM students WHERE is_archived = TRUE;
+
+-- QUICK USER COUNT
+SELECT 
+    (SELECT COUNT(*) FROM sections WHERE user_id = 1 AND is_archived = FALSE) AS admin_sections,
+    (SELECT COUNT(*) FROM sections WHERE user_id = 2 AND is_archived = FALSE) AS marsh_sections;
+
