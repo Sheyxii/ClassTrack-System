@@ -1,10 +1,3 @@
 from .main_window import MainWindow
-from .login_window import LoginWindow
-from .signup_dialog import SignupDialog
-from .forgot_password_dialog import ForgotPasswordDialog
-from .dashboard_page import DashboardPage
-from .my_classes_page import MyClassesPage
-from .attendance_page import AttendancePage
-from .schedule_page import SchedulePage
-from .resources_page import ResourcesPage
-from .settings_page import SettingsPage
+from .auth import LoginWindow, SignupDialog, ForgotPasswordDialog
+from .main import DashboardPage, MyClassesPage, AttendancePage, SchedulePage, ResourcesPage, SettingsPage

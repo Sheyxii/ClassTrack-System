@@ -5,7 +5,7 @@ from utils.populate_bscs2b import populate_bscs2b
 
 
 if __name__ == "__main__":
-    # Auto-populate BSCS 2B section with default students on first run
+    # Auto-populate BSCS 2B sectionth default students on first run
     try:
         populate_bscs2b(silent=True)
     except Exception as e:

@@ -2,12 +2,12 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
-from .dashboard_page import DashboardPage
-from .my_classes_page import MyClassesPage
-from .attendance_page import AttendancePage
-from .schedule_page import SchedulePage
-from .resources_page import ResourcesPage
-from .settings_page import SettingsPage
+from .main.dashboard_page import DashboardPage
+from .main.my_classes_page import MyClassesPage
+from .main.attendance_page import AttendancePage
+from .main.schedule_page import SchedulePage
+from .main.resources_page import ResourcesPage
+from .main.settings_page import SettingsPage
 
 
 class MainWindow(QMainWindow):

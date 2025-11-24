@@ -10,7 +10,7 @@ class DatabaseConnection:
         self.connection = None
     
     def connect(self):
-        """I-establish ang database connection"""
+        """database connection"""
         try:
             self.connection = pymysql.connect(
                 host=self.host,
@@ -24,14 +24,14 @@ class DatabaseConnection:
             return False
     
     def disconnect(self):
-        """I-close ang database connection"""
+        """close the database connection"""
         if self.connection:
             self.connection.close()
     
     def validate_user(self, username, password):
         """
         I-validate ang user credentials
-        Returns: (success: bool, message: str, user_data: dict or None)
+       
         """
         if not username or not password:
             return False, "Please enter both username and password", None
@@ -65,7 +65,7 @@ class DatabaseConnection:
     def validate_user_by_email(self, email, password):
         """
         I-validate ang user credentials gamit ang email
-        Returns: (success: bool, message: str, user_data: dict or None)
+
         """
         if not email or not password:
             return False, "Please enter both email and password", None
@@ -95,7 +95,6 @@ class DatabaseConnection:
     def add_user(self, username, password, email):
         """
         Mag-add ng new user sa database
-        Returns: (success: bool, message: str)
         """
         if not username or not password or not email:
             return False, "All fields are required"
@@ -139,8 +138,7 @@ class DatabaseConnection:
     
     def reset_password(self, email, new_password):
         """
-        I-reset ang user password gamit ang email
-        Returns: (success: bool, message: str)
+        reset user password using email
         """
         if not email or not new_password:
             return False, "Email and password are required"
@@ -178,7 +176,6 @@ class DatabaseConnection:
     def get_sections(self, user_id, include_archived=False):
         """
         Kunin lahat ng sections para sa user
-        Returns: list of section dictionaries
         """
         if not self.connect():
             return []
@@ -202,7 +199,7 @@ class DatabaseConnection:
     def add_section(self, section_name, user_id):
         """
         Mag-add ng new section
-        Returns: (success: bool, message: str, section_id: int or None)
+
         """
         if not section_name:
             return False, "Section name is required", None

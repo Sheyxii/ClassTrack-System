@@ -2,8 +2,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from ui import MainWindow
-from ui.signup_dialog import SignupDialog
-from ui.forgot_password_dialog import ForgotPasswordDialog
+from .signup_dialog import SignupDialog
+from .forgot_password_dialog import ForgotPasswordDialog
 from utils import DatabaseConnection
 
 

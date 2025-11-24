@@ -262,7 +262,7 @@ class MyClassesPage(QWidget):
                 color: white;
             }
         """)
-        view_archive_btn.clicked.connect(lambda: self.show_student_archive_dialog(section))
+        view_archive_btn.clicked.connect(lambda: self.show_student_archive_dialog(section, refresh_table))
         header_layout.addWidget(view_archive_btn)
         
         layout.addLayout(header_layout)
@@ -1052,38 +1052,42 @@ class MyClassesPage(QWidget):
                 table.setItem(row, 1, QTableWidgetItem(archived_date))
                 
                 # Restore button
-                restore_btn = QPushButton("↺ Restore")
+                restore_btn = QPushButton(" Restore")
+                restore_btn.setIcon(QIcon("image/restore.png"))
+                restore_btn.setIconSize(QSize(20, 20))
                 restore_btn.setCursor(Qt.PointingHandCursor)
                 restore_btn.setStyleSheet("""
                     QPushButton {
-                        background-color: #4CAF50;
-                        color: white;
+                        background-color: #E6EFFA;
+                        color: #000000;
                         border-radius: 6px;
                         padding: 8px 15px;
                         font-size: 13px;
                         font-weight: 600;
                     }
                     QPushButton:hover {
-                        background-color: #45a049;
+                        background-color: #C8B6FF;
                     }
                 """)
                 restore_btn.clicked.connect(lambda checked, s=section: self.restore_section(s, dialog))
                 table.setCellWidget(row, 2, restore_btn)
                 
                 # Permanent delete button
-                delete_btn = QPushButton("🗑 Delete")
+                delete_btn = QPushButton(" Delete")
+                delete_btn.setIcon(QIcon("image/bin.png"))
+                delete_btn.setIconSize(QSize(20, 20))
                 delete_btn.setCursor(Qt.PointingHandCursor)
                 delete_btn.setStyleSheet("""
                     QPushButton {
-                        background-color: #F44336;
-                        color: white;
+                        background-color: #FFE6E6;
+                        color: #000000;
                         border-radius: 6px;
                         padding: 8px 15px;
                         font-size: 13px;
                         font-weight: 600;
                     }
                     QPushButton:hover {
-                        background-color: #da190b;
+                        background-color: #FFCCCC;
                     }
                 """)
                 delete_btn.clicked.connect(lambda checked, s=section: self.delete_section_permanently(s, dialog))
@@ -1120,11 +1124,11 @@ class MyClassesPage(QWidget):
         
         dialog.exec_()
 
-    def show_student_archive_dialog(self, section):
+    def show_student_archive_dialog(self, section, refresh_callback=None):
         """Ipakita ang archived students para sa specific section"""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Archived Students - {section['section_name']}")
-        dialog.setMinimumSize(1000, 600)
+        dialog.resize(1200, 700)
         dialog.setStyleSheet("background-color: #E7E7DF;")
         
         layout = QVBoxLayout(dialog)
@@ -1175,10 +1179,19 @@ class MyClassesPage(QWidget):
             table.setSelectionBehavior(QTableWidget.SelectRows)
             table.setEditTriggers(QTableWidget.NoEditTriggers)
             
-            for i in range(8):
-                table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeToContents)
-            table.setColumnWidth(8, 100)
-            table.setColumnWidth(9, 100)
+            # Set column widths for better fit
+            table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Student ID
+            table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # First Name
+            table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)  # Last Name
+            table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Age
+            table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)  # Email
+            table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Phone
+            table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Birthday
+            table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeToContents)  # Grade
+            table.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)  # Restore
+            table.horizontalHeader().setSectionResizeMode(9, QHeaderView.Fixed)  # Delete
+            table.setColumnWidth(8, 80)
+            table.setColumnWidth(9, 80)
             
             for row, student in enumerate(archived_students):
                 table.setItem(row, 0, QTableWidgetItem(student.get('student_id', '')))
@@ -1191,38 +1204,42 @@ class MyClassesPage(QWidget):
                 table.setItem(row, 7, QTableWidgetItem(str(student.get('grade', ''))))
                 
                 # Restore button
-                restore_btn = QPushButton("↺")
+                restore_btn = QPushButton()
+                restore_btn.setIcon(QIcon("image/restore.png"))
+                restore_btn.setIconSize(QSize(20, 20))
                 restore_btn.setCursor(Qt.PointingHandCursor)
                 restore_btn.setStyleSheet("""
                     QPushButton {
-                        background-color: #4CAF50;
-                        color: white;
+                        background-color: #E6EFFA;
+                        color: #000000;
                         border-radius: 6px;
                         padding: 5px;
                         font-size: 16px;
                         font-weight: 600;
                     }
                     QPushButton:hover {
-                        background-color: #45a049;
+                        background-color: #C8B6FF;
                     }
                 """)
-                restore_btn.clicked.connect(lambda checked, s=student: self.restore_student(s, dialog))
+                restore_btn.clicked.connect(lambda checked, s=student: self.restore_student(s, dialog, refresh_callback))
                 table.setCellWidget(row, 8, restore_btn)
                 
                 # Permanent delete button
-                delete_btn = QPushButton("🗑")
+                delete_btn = QPushButton()
+                delete_btn.setIcon(QIcon("image/bin.png"))
+                delete_btn.setIconSize(QSize(20, 20))
                 delete_btn.setCursor(Qt.PointingHandCursor)
                 delete_btn.setStyleSheet("""
                     QPushButton {
-                        background-color: #F44336;
-                        color: white;
+                        background-color: #FFE6E6;
+                        color: #000000;
                         border-radius: 6px;
                         padding: 5px;
                         font-size: 16px;
                         font-weight: 600;
                     }
                     QPushButton:hover {
-                        background-color: #da190b;
+                        background-color: #FFCCCC;
                     }
                 """)
                 delete_btn.clicked.connect(lambda checked, s=student: self.delete_student_permanently(s, dialog))
@@ -1293,7 +1310,7 @@ class MyClassesPage(QWidget):
             else:
                 QMessageBox.warning(self, "Error", message)
 
-    def restore_student(self, student, parent_dialog):
+    def restore_student(self, student, parent_dialog, refresh_callback=None):
         """I-restore ang archived student"""
         student_name = f"{student['first_name']} {student['last_name']}"
         reply = QMessageBox.question(
@@ -1306,6 +1323,9 @@ class MyClassesPage(QWidget):
             success, message = self.db.restore_student(student['student_id'])
             if success:
                 self.load_sections()
+                # Refresh the section details dialog if callback is provided
+                if refresh_callback:
+                    refresh_callback()
                 parent_dialog.accept()
                 QMessageBox.information(self, "Success", message)
             else:
