@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sections (
     section_id INT AUTO_INCREMENT PRIMARY KEY,
     section_name VARCHAR(50) NOT NULL UNIQUE,
+    section VARCHAR(50),
+    subject VARCHAR(100),
+    room VARCHAR(50),
     user_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_archived BOOLEAN DEFAULT FALSE,

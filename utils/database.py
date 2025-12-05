@@ -196,7 +196,7 @@ class DatabaseConnection:
             self.disconnect()
             return []
     
-    def add_section(self, section_name, user_id):
+    def add_section(self, section_name, user_id, section=None, subject=None, room=None):
         """
         Mag-add ng new section
 
@@ -218,9 +218,9 @@ class DatabaseConnection:
                 self.disconnect()
                 return False, "Section already exists", None
             
-            # I-insert ang new section
-            insert_query = "INSERT INTO sections (section_name, user_id) VALUES (%s, %s)"
-            cursor.execute(insert_query, (section_name, user_id))
+            # I-insert ang new section with all fields
+            insert_query = "INSERT INTO sections (section_name, section, subject, room, user_id) VALUES (%s, %s, %s, %s, %s)"
+            cursor.execute(insert_query, (section_name, section, subject, room, user_id))
             section_id = cursor.lastrowid
             self.connection.commit()
             cursor.close()
@@ -230,6 +230,44 @@ class DatabaseConnection:
         except Error as e:
             self.disconnect()
             return False, f"Database error: {e}", None
+    
+    def update_section(self, section_id, section_name, section, subject, room):
+        """
+        Update section details
+        Returns: (success: bool, message: str)
+        """
+        if not section_name:
+            return False, "Class name is required"
+        
+        if not self.connect():
+            return False, "Database connection failed"
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # Check if another section with this name exists (excluding current section)
+            check_query = "SELECT section_id FROM sections WHERE section_name = %s AND section_id != %s AND is_archived = FALSE"
+            cursor.execute(check_query, (section_name, section_id))
+            if cursor.fetchone():
+                cursor.close()
+                self.disconnect()
+                return False, "A class with this name already exists"
+            
+            # Update the section
+            update_query = """
+                UPDATE sections 
+                SET section_name = %s, section = %s, subject = %s, room = %s
+                WHERE section_id = %s
+            """
+            cursor.execute(update_query, (section_name, section, subject, room, section_id))
+            self.connection.commit()
+            cursor.close()
+            self.disconnect()
+            return True, "Class updated successfully"
+            
+        except Error as e:
+            self.disconnect()
+            return False, f"Database error: {e}"
     
     def archive_section(self, section_id):
         """

@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sys
+import random
 sys.path.append('..')
 from utils.database import DatabaseConnection
 
@@ -17,109 +18,312 @@ class MyClassesPage(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(35, 20, 35, 20)
-        main_layout.setSpacing(25)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Header with title
+        # Main content area
+        content_widget = QWidget()
+        content_widget.setStyleSheet("background-color: #E7E7DF;")
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(40, 30, 40, 30)
+        content_layout.setSpacing(20)
+
+        # Header with CREATE CLASS button
+        header_layout = QHBoxLayout()
+        
         title = QLabel("My Classes")
         title.setStyleSheet("font-size: 28px; font-weight: 700; color: #222;")
-        main_layout.addWidget(title)
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+        
+        # Create Class button
+        self.add_class_btn = QPushButton("⊕ CREATE CLASS")
+        self.add_class_btn.setCursor(Qt.PointingHandCursor)
+        self.add_class_btn.setFixedHeight(45)
+        self.add_class_btn.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                color: #222;
+                border: 2px solid #DDD;
+                border-radius: 8px;
+                padding: 10px 25px;
+                font-size: 14px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #F5F5F5;
+                border-color: #BBB;
+            }
+        """)
+        self.add_class_btn.clicked.connect(self.add_section_dialog)
+        header_layout.addWidget(self.add_class_btn)
+        
+        content_layout.addLayout(header_layout)
 
-        # Sections container with scroll
+        # Scroll area for classes
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
         scroll_content = QWidget()
-        self.sections_layout = QGridLayout(scroll_content)
-        self.sections_layout.setSpacing(20)
-        self.sections_layout.setContentsMargins(0, 0, 0, 0)
-        self.sections_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        scroll_content.setStyleSheet("background-color: transparent;")
+        self.classes_layout = QGridLayout(scroll_content)
+        self.classes_layout.setContentsMargins(0, 0, 0, 0)
+        self.classes_layout.setSpacing(20)
+        self.classes_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         scroll.setWidget(scroll_content)
-        main_layout.addWidget(scroll)
 
-        # Action buttons container (bottom right)
-        buttons_container = QFrame()
-        buttons_layout = QVBoxLayout(buttons_container)
-        buttons_layout.setSpacing(15)
-        buttons_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.addWidget(scroll)
 
-        # ADD SECTION button
-        add_section_btn = QPushButton("ADD SECTION")
-        add_section_btn.setCursor(Qt.PointingHandCursor)
-        add_section_btn.setFixedSize(200, 50)
-        add_section_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                color: #222;
-                border: 2px solid #DDD;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 700;
-                text-align: center;
-            }
-            QPushButton:hover {
-                background-color: #F5F5F5;
-                border-color: #BBB;
-            }
-        """)
-        add_section_btn.clicked.connect(self.add_section_dialog)
-
-        # ARCHIVE button
-        archive_btn = QPushButton("ARCHIVE")
-        archive_btn.setCursor(Qt.PointingHandCursor)
-        archive_btn.setFixedSize(200, 50)
-        archive_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                color: #222;
-                border: 2px solid #DDD;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 700;
-                text-align: center;
-            }
-            QPushButton:hover {
-                background-color: #F5F5F5;
-                border-color: #BBB;
-            }
-        """)
-        archive_btn.clicked.connect(self.show_archive_dialog)
-
-        buttons_layout.addWidget(add_section_btn)
-        buttons_layout.addWidget(archive_btn)
-        buttons_layout.addStretch()
-
-        # Position buttons at bottom right
-        main_layout.addWidget(buttons_container, alignment=Qt.AlignRight | Qt.AlignBottom)
+        main_layout.addWidget(content_widget)
 
     def load_sections(self):
-        # load ang sections from database
-        self.clear_sections_layout()
+        """Load all classes as cards in grid layout"""
+        self.clear_classes_layout()
         sections = self.db.get_sections(self.user_id, include_archived=False)
         
-        # I-convert to list at i-reverse para ipakita ang oldest first (queue - FIFO)
         sections = list(sections)
         sections.reverse()
         
-        # I-set ang column stretches para sa equal distribution
-        for i in range(3):
-            self.sections_layout.setColumnStretch(i, 1)
+        if sections:
+            row = 0
+            col = 0
+            for index, section in enumerate(sections):
+                card = self.create_class_card(section, index)
+                self.classes_layout.addWidget(card, row, col)
+                col += 1
+                if col >= 3:  # 3 columns per row
+                    col = 0
+                    row += 1
+        else:
+            placeholder = QLabel("No classes yet. Click CREATE CLASS to get started!")
+            placeholder.setStyleSheet("font-size: 18px; color: #555; padding: 40px;")
+            placeholder.setAlignment(Qt.AlignCenter)
+            self.classes_layout.addWidget(placeholder, 0, 0, 1, 3)
         
-        row = 0
-        col = 0
-        
-        for section in sections:
-            card = self.create_section_card(section)
-            self.sections_layout.addWidget(card, row, col)
-            
-            col += 1
-            if col >= 3:  # 3 cards per row
-                col = 0
-                row += 1
-        
-        # I-refresh ang dashboard chart kung available
+        # Refresh dashboard chart if available
         if self.dashboard_page:
             self.dashboard_page.refresh_chart()
+
+    def clear_classes_layout(self):
+        """Clear all widgets from classes layout"""
+        while self.classes_layout.count():
+            item = self.classes_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def create_class_card(self, section, index):
+        """Create a class card matching the image design with colored top and white bottom"""
+        # Get color based on index (4 colors rotating)
+        card_color, text_color, icon_bg = self.get_card_colors(index)
+        
+        # Main card container
+        card = QFrame()
+        card.setFixedSize(513, 250)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border-radius: 15px;
+                border: none;
+            }
+        """)
+        
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(0)
+
+        # Colored top section
+        top_section = QWidget()
+        top_section.setFixedHeight(120)
+        top_section.setStyleSheet(f"""
+            QWidget {{
+                background-color: {card_color};
+                border-top-left-radius: 15px;
+                border-top-right-radius: 15px;
+            }}
+        """)
+        
+        top_layout = QVBoxLayout(top_section)
+        top_layout.setContentsMargins(20, 15, 20, 15)
+        top_layout.setSpacing(5)
+        
+        # Header with class name and icon
+        header_layout = QHBoxLayout()
+        
+        # Class name and section info on left
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(2)
+        
+        # Parse section name to extract parts
+        parts = section['section_name'].split(' - ')
+        class_name = parts[0] if parts else section['section_name']
+        section_text = parts[1] if len(parts) > 1 else ''
+        
+        class_label = QLabel(class_name)
+        class_label.setStyleSheet(f"font-size: 32px; font-weight: 700; color: {text_color}; background: transparent;")
+        class_label.setWordWrap(True)
+        info_layout.addWidget(class_label)
+        
+        if section_text:
+            section_label = QLabel(section_text)
+            section_label.setStyleSheet(f"font-size: 20px; font-weight: 600; color: {text_color}; background: transparent;")
+            info_layout.addWidget(section_label)
+        
+        header_layout.addLayout(info_layout)
+        header_layout.addStretch()
+        
+        # Icon container on top right
+        icon_container = QWidget()
+        icon_container.setFixedSize(60, 60)
+        icon_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {icon_bg};
+                border-radius: 12px;
+            }}
+        """)
+        icon_layout = QVBoxLayout(icon_container)
+        icon_layout.setContentsMargins(0, 0, 0, 0)
+        icon_layout.setAlignment(Qt.AlignCenter)
+        
+        icon_label = QLabel(self.get_section_icon_for_card(index))
+        icon_label.setStyleSheet("font-size: 32px; background: transparent;")
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_layout.addWidget(icon_label)
+        
+        header_layout.addWidget(icon_container)
+        top_layout.addLayout(header_layout)
+        
+        # Student count in colored section
+        students = self.db.get_students(section['section_id'], include_archived=False)
+        student_count = len(list(students))
+        
+        student_info = QLabel(f"{student_count} students")
+        student_info.setStyleSheet(f"font-size: 18px; color: {text_color}; background: transparent;")
+        top_layout.addWidget(student_info)
+        
+        card_layout.addWidget(top_section)
+        
+        # White bottom section with dropdown
+        bottom_section = QWidget()
+        bottom_section.setStyleSheet("""
+            QWidget {
+                background-color: white;
+                border-bottom-left-radius: 15px;
+                border-bottom-right-radius: 15px;
+            }
+        """)
+        
+        bottom_layout = QHBoxLayout(bottom_section)
+        bottom_layout.setContentsMargins(20, 15, 20, 15)
+        
+        # View Class button
+        view_class_btn = QPushButton("View Class")
+        view_class_btn.setCursor(Qt.PointingHandCursor)
+        view_class_btn.setFixedHeight(35)
+        view_class_btn.setStyleSheet("""
+            QPushButton {
+                background-color: gray;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 20px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: darkgray;
+            }
+        """)
+        view_class_btn.clicked.connect(lambda: self.open_class(section, card_color))
+        bottom_layout.addWidget(view_class_btn)
+        
+        bottom_layout.addStretch()
+        
+        # Dropdown button at bottom right
+        dropdown_btn = QPushButton("")
+        dropdown_btn.setCursor(Qt.PointingHandCursor)
+        dropdown_btn.setFixedSize(40, 40)
+        dropdown_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #333;
+                border: none;
+                font-size: 20px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+                border-radius: 20px;
+            }
+        """)
+        
+        menu = QMenu(dropdown_btn)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: white;
+                border: 2px solid #DDD;
+                border-radius: 8px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 10px 30px;
+                font-size: 14px;
+                color: #333;
+            }
+            QMenu::item:selected {
+                background-color: #E6EFFA;
+                border-radius: 6px;
+            }
+        """)
+        
+        update_action = QAction("✏️ Update", menu)
+        update_action.triggered.connect(lambda: self.update_section_dialog(section))
+        menu.addAction(update_action)
+        
+        archive_action = QAction("📦 Archive", menu)
+        archive_action.triggered.connect(lambda: self.archive_section(section))
+        menu.addAction(archive_action)
+        
+        dropdown_btn.setMenu(menu)
+        dropdown_btn.clicked.connect(lambda: menu.exec_(dropdown_btn.mapToGlobal(dropdown_btn.rect().bottomLeft())))
+        
+        bottom_layout.addWidget(dropdown_btn)
+        card_layout.addWidget(bottom_section)
+        
+        return card
+
+    def open_class(self, section, card_color=None):
+        """Notify main window to open this class"""
+        # This will be called by main_window to open the class page
+        if hasattr(self, 'main_window'):
+            self.main_window.open_class_page(section, card_color)
+    
+    def refresh_current_view(self):
+        """Refresh the classes list after changes"""
+        self.load_sections()
+        
+        # Refresh dashboard chart if available
+        if self.dashboard_page:
+            self.dashboard_page.refresh_chart()
+        
+        # Update main window's class pages and submenus if they exist
+        if hasattr(self, 'main_window'):
+            if hasattr(self.main_window, 'class_pages'):
+                self.main_window.class_pages.clear()  # Clear cached class pages
+            if hasattr(self.main_window, 'load_class_submenus'):
+                self.main_window.load_class_submenus()  # Reload submenu items
+
+    def load_sections_for_view(self, view_type):
+        """Load sections for grades or attendance view"""
+        self.clear_sections_layout()
+        sections = self.db.get_sections(self.user_id, include_archived=False)
+        
+        # Convert to list and reverse to show oldest first (FIFO)
+        sections = list(sections)
+        sections.reverse()
+        
+        for section in sections:
+            card = self.create_section_card(section, view_type=view_type)
+            self.sections_layout.addWidget(card)
 
     def clear_sections_layout(self):
         while self.sections_layout.count():
@@ -127,73 +331,221 @@ class MyClassesPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-    def create_section_card(self, section):
+    def create_section_card(self, section, view_type='subjects'):
         """Gumawa ng section card na katulad ng design sa image"""
         card = QFrame()
-        card.setMinimumHeight(220)
-        card.setMinimumWidth(300)
+        card.setFixedHeight(80)
         card.setStyleSheet("""
             QFrame {
-                background-color: white;
+                background-color: #C0C0C0;
                 border-radius: 12px;
                 border: none;
+            }
+            QFrame:hover {
+                background-color: #B0B0B0;
             }
         """)
         card.setCursor(Qt.PointingHandCursor)
         
-        # I-set ang size policy para mag-expand proportionally (3 cards per row)
-        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(20, 20, 20, 20)
-        card_layout.setSpacing(10)
-        card_layout.setAlignment(Qt.AlignCenter)
+        card_layout = QHBoxLayout(card)
+        card_layout.setContentsMargins(15, 10, 15, 10)
+        card_layout.setSpacing(15)
 
-        # Section title
-        section_title = QLabel(section['section_name'])
-        section_title.setStyleSheet("font-size: 28px; font-weight: 700; color: #222; outline: none;")
-        section_title.setAlignment(Qt.AlignCenter)
-        card_layout.addWidget(section_title)
+        # Icon container
+        icon_container = QWidget()
+        icon_container.setFixedSize(50, 50)
+        icon_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: {self.get_section_color(section['section_name'])};
+                border-radius: 10px;
+            }}
+        """)
+        icon_layout = QVBoxLayout(icon_container)
+        icon_layout.setContentsMargins(0, 0, 0, 0)
+        icon_layout.setAlignment(Qt.AlignCenter)
         
+        # Icon label
+        icon_label = QLabel(self.get_section_icon(section['section_name']))
+        icon_label.setStyleSheet("font-size: 24px; background: transparent;")
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_layout.addWidget(icon_label)
+        
+        card_layout.addWidget(icon_container)
+
+        # Section info
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(2)
+        
+        section_name = QLabel(section['section_name'])
+        section_name.setStyleSheet("font-size: 16px; font-weight: 700; color: #222; background: transparent;")
+        info_layout.addWidget(section_name)
+        
+        # Get student count
+        students = self.db.get_students(section['section_id'], include_archived=False)
+        student_count = len(list(students))
+        
+        student_info = QLabel(f"👤 {student_count} Students")
+        student_info.setStyleSheet("font-size: 13px; color: #333; background: transparent;")
+        info_layout.addWidget(student_info)
+        
+        card_layout.addLayout(info_layout)
         card_layout.addStretch()
-        
-        # Delete button at bottom right
-        delete_btn = QPushButton()
-        delete_btn.setIcon(QIcon("image/bin.png"))
-        delete_btn.setIconSize(QSize(20, 20))
-        delete_btn.setCursor(Qt.PointingHandCursor)
-        delete_btn.setFixedSize(35, 35)
-        delete_btn.setStyleSheet("""
+
+        # Determine button text based on view type
+        button_texts = {
+            'subjects': 'View Course',
+            'grades': 'View Grade',
+            'attendance': 'View Attendance'
+        }
+        button_text = button_texts.get(view_type, 'View Course')
+
+        # View button
+        view_btn = QPushButton(button_text)
+        view_btn.setCursor(Qt.PointingHandCursor)
+        view_btn.setFixedSize(140, 35)
+        view_btn.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
+                background-color: #1a1a1a;
+                color: white;
                 border: none;
-                border-radius: 17px;
-                outline: none;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #FFE6E6;
+                background-color: #2a2a2a;
             }
         """)
-        delete_btn.clicked.connect(lambda: self.archive_section(section))
         
-        delete_container = QWidget()
-        delete_container.setStyleSheet("background-color: transparent;")
-        delete_layout = QHBoxLayout(delete_container)
-        delete_layout.setContentsMargins(0, 0, 0, 0)
-        delete_layout.addStretch()
-        delete_layout.addWidget(delete_btn)
+        # Connect to appropriate action based on view type
+        if view_type == 'subjects':
+            view_btn.clicked.connect(lambda: self.view_section_details(section))
+        elif view_type == 'grades':
+            view_btn.clicked.connect(lambda: self.view_grades(section))
+        elif view_type == 'attendance':
+            view_btn.clicked.connect(lambda: self.view_attendance(section))
         
-        card_layout.addWidget(delete_container)
+        card_layout.addWidget(view_btn)
         
-        # Make card clickable to view students, pero i-filter ang clicks sa delete button
-        def card_click_handler(event):
-            # I-check kung nag-click sa delete button area
-            if not delete_btn.geometry().contains(delete_container.mapFrom(card, event.pos())):
-                self.view_section_details(section)
+        # Show dropdown menu for all views (subjects, grades, attendance)
+        # Dropdown menu button
+        dropdown_btn = QPushButton("")
+        dropdown_btn.setCursor(Qt.PointingHandCursor)
+        dropdown_btn.setFixedSize(35, 35)
+        dropdown_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #222;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #A0A0A0;
+            }
+        """)
         
-        card.mousePressEvent = card_click_handler
+        # Create menu
+        menu = QMenu(dropdown_btn)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: white;
+                border: 2px solid #DDD;
+                border-radius: 8px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 10px 30px;
+                font-size: 14px;
+                color: #333;
+            }
+            QMenu::item:selected {
+                background-color: #E6EFFA;
+                border-radius: 6px;
+            }
+        """)
+        
+        # Update action
+        update_action = QAction("✏️ Update", menu)
+        update_action.triggered.connect(lambda: self.update_section_dialog(section))
+        menu.addAction(update_action)
+        
+        # Archive action
+        archive_action = QAction("📦 Archive", menu)
+        archive_action.triggered.connect(lambda: self.archive_section(section))
+        menu.addAction(archive_action)
+        
+        dropdown_btn.setMenu(menu)
+        dropdown_btn.clicked.connect(lambda: menu.exec_(dropdown_btn.mapToGlobal(dropdown_btn.rect().bottomLeft())))
+        
+        card_layout.addWidget(dropdown_btn)
         
         return card
+    
+    def get_card_colors(self, index):
+        """Get random pastel card colors with proper contrast"""
+        # Generate a random pastel color for the card
+        random.seed(index * 123456)  # Use index as seed for consistency per card
+        
+        # Generate pastel colors by using high RGB values (mix with white)
+        # Pastel colors range from 180-255 to ensure they're light and soft
+        r = random.randint(180, 255)
+        g = random.randint(180, 255)
+        b = random.randint(180, 255)
+        
+        card_color = f'#{r:02x}{g:02x}{b:02x}'
+        
+        # Calculate luminance to determine if color is light or dark
+        # Using relative luminance formula
+        luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+        
+        # Pastel colors are generally light, so we'll use dark text
+        # But still check just in case
+        if luminance < 0.5:
+            text_color = '#FFFFFF'
+        else:
+            text_color = '#1a1a1a'
+        
+        # Generate a slightly darker pastel shade for icon background
+        icon_r = max(150, r - 40)
+        icon_g = max(150, g - 40)
+        icon_b = max(150, b - 40)
+        
+        icon_bg = f'#{icon_r:02x}{icon_g:02x}{icon_b:02x}'
+        
+        return (card_color, text_color, icon_bg)
+    
+    def get_section_icon_for_card(self, index):
+        """Get icon based on index (4 icons rotating)"""
+        icons = ['💻', '📖', '📐', '🔬', '✒️']
+        return icons[index % 4]
+    
+    def get_section_color(self, section_name):
+        """Kumuha ng color based sa section name"""
+        colors = {
+            'ITEC': '#FFE5B4',
+            'CMSC': '#FFE5E5',
+            'BSCS': '#E5E5FF',
+            'BSIT': '#E5FFE5',
+        }
+        for key in colors:
+            if key in section_name.upper():
+                return colors[key]
+        return '#E5E5E5'
+    
+    def get_section_icon(self, section_name):
+        """Kumuha ng icon/emoji based sa section name"""
+        icons = {
+            'ITEC': '💻',
+            'CMSC': '🖥️',
+            'BSCS': '⚙️',
+            'BSIT': '📱',
+        }
+        for key in icons:
+            if key in section_name.upper():
+                return icons[key]
+        return '📚'
 
     def view_section_details(self, section):
         """Buksan ang dialog na nagpapakita ng section details at students"""
@@ -548,88 +900,355 @@ class MyClassesPage(QWidget):
 
     def add_section_dialog(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Add Section")
-        dialog.setFixedSize(450, 220)
-        dialog.setStyleSheet("background-color: #E7E7DF;")
+        dialog.setWindowTitle("Create class")
+        dialog.setFixedSize(500, 500)
+        dialog.setStyleSheet("background-color: white;")
         
         layout = QVBoxLayout(dialog)
         layout.setSpacing(15)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setContentsMargins(40, 35, 40, 35)
         
-        title = QLabel("Create New Section")
-        title.setStyleSheet("font-size: 22px; font-weight: 700; color: #222;")
+        title = QLabel("Create class")
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #222;")
         layout.addWidget(title)
         
+        layout.addSpacing(10)
+        
+        # Class name input
+        class_name_label = QLabel("Class name (required)")
+        class_name_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(class_name_label)
+        
+        class_name_input = QLineEdit()
+        class_name_input.setPlaceholderText("")
+        class_name_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
+        layout.addWidget(class_name_input)
+        
+        # Section input
+        section_label = QLabel("Section")
+        section_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(section_label)
+        
         section_input = QLineEdit()
-        section_input.setPlaceholderText("Enter section name (e.g., BSCS-1A)")
+        section_input.setPlaceholderText("")
         section_input.setStyleSheet("""
             QLineEdit {
-                padding: 12px;
-                border-radius: 8px;
-                border: 2px solid #C8B6FF;
-                font-size: 15px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
                 background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
             }
         """)
         layout.addWidget(section_input)
         
+        # Subject input
+        subject_label = QLabel("Subject")
+        subject_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(subject_label)
+        
+        subject_input = QLineEdit()
+        subject_input.setPlaceholderText("")
+        subject_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
+        layout.addWidget(subject_input)
+        
+        # Room input
+        room_label = QLabel("Room")
+        room_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(room_label)
+        
+        room_input = QLineEdit()
+        room_input.setPlaceholderText("")
+        room_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
+        layout.addWidget(room_input)
+        
+        layout.addStretch()
+        
+        # Buttons
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
         
         cancel_btn = QPushButton("Cancel")
         cancel_btn.setCursor(Qt.PointingHandCursor)
-        cancel_btn.setFixedHeight(45)
-        cancel_btn.setFixedWidth(120)
+        cancel_btn.setFixedHeight(40)
+        cancel_btn.setFixedWidth(100)
         cancel_btn.setStyleSheet("""
             QPushButton {
-                background-color: #E0E0E0;
-                color: #333;
-                border-radius: 8px;
+                background-color: transparent;
+                color: #4285F4;
+                border: none;
+                border-radius: 4px;
                 padding: 10px 20px;
                 font-size: 14px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #D0D0D0;
+                background-color: #F0F0F0;
             }
         """)
         cancel_btn.clicked.connect(dialog.reject)
         
         create_btn = QPushButton("Create")
         create_btn.setCursor(Qt.PointingHandCursor)
-        create_btn.setFixedHeight(45)
-        create_btn.setFixedWidth(120)
+        create_btn.setFixedHeight(40)
+        create_btn.setFixedWidth(100)
         create_btn.setStyleSheet("""
             QPushButton {
-                background-color: #836FFF;
-                color: white;
-                border-radius: 8px;
+                background-color: transparent;
+                color: #4285F4;
+                border: none;
+                border-radius: 4px;
                 padding: 10px 20px;
                 font-size: 14px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #9A7FF0;
+                background-color: #F0F0F0;
             }
         """)
         
         def create_section():
-            section_name = section_input.text().strip()
-            if section_name:
-                success, message, _ = self.db.add_section(section_name, self.user_id)
-                if success:
-                    self.load_sections()
-                    dialog.accept()
-                    QMessageBox.information(dialog, "Success", message)
-                else:
-                    QMessageBox.warning(dialog, "Error", message)
+            class_name = class_name_input.text().strip()
+            section = section_input.text().strip()
+            subject = subject_input.text().strip()
+            room = room_input.text().strip()
+            
+            if not class_name:
+                QMessageBox.warning(dialog, "Invalid Input", "Please enter a class name!")
+                return
+            
+            success, message, _ = self.db.add_section(
+                class_name, 
+                self.user_id,
+                section,
+                subject,
+                room
+            )
+            if success:
+                dialog.accept()
+                QMessageBox.information(self, "Success", message)
+                self.refresh_current_view()
             else:
-                QMessageBox.warning(dialog, "Invalid Input", "Please enter a section name!")
+                QMessageBox.warning(dialog, "Error", message)
         
         create_btn.clicked.connect(create_section)
         
         buttons_layout.addWidget(cancel_btn)
         buttons_layout.addWidget(create_btn)
+        layout.addLayout(buttons_layout)
+        
+        dialog.exec_()
+    
+    def update_section_dialog(self, section):
+        """Update section details"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Update Section")
+        dialog.setFixedSize(500, 550)
+        dialog.setStyleSheet("background-color: white;")
+        
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(40, 35, 40, 35)
+        
+        title = QLabel("Update Section")
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #222;")
+        layout.addWidget(title)
+        
+        layout.addSpacing(10)
+        
+        # Class name input
+        class_name_label = QLabel("Class name (required)")
+        class_name_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(class_name_label)
+        
+        class_name_input = QLineEdit()
+        class_name_input.setText(section.get('section_name', ''))
+        class_name_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
+        layout.addWidget(class_name_input)
+        
+        # Section input
+        section_label = QLabel("Section")
+        section_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(section_label)
+        
+        section_input = QLineEdit()
+        section_input.setText(section.get('section', '') or '')
+        section_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
+        layout.addWidget(section_input)
+        
+        # Subject input
+        subject_label = QLabel("Subject")
+        subject_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(subject_label)
+        
+        subject_input = QLineEdit()
+        subject_input.setText(section.get('subject', '') or '')
+        subject_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
+        layout.addWidget(subject_input)
+        
+        # Room input
+        room_label = QLabel("Room")
+        room_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(room_label)
+        
+        room_input = QLineEdit()
+        room_input.setText(section.get('room', '') or '')
+        room_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4285F4;
+            }
+        """)
+        layout.addWidget(room_input)
+        
+        layout.addStretch()
+        
+        # Buttons
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(40)
+        cancel_btn.setFixedWidth(100)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #4285F4;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #F0F0F0;
+            }
+        """)
+        cancel_btn.clicked.connect(dialog.reject)
+        
+        update_btn = QPushButton("Update")
+        update_btn.setCursor(Qt.PointingHandCursor)
+        update_btn.setFixedHeight(40)
+        update_btn.setFixedWidth(100)
+        update_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #4285F4;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #F0F0F0;
+            }
+        """)
+        
+        def update_section():
+            class_name = class_name_input.text().strip()
+            section_value = section_input.text().strip()
+            subject = subject_input.text().strip()
+            room = room_input.text().strip()
+            
+            if not class_name:
+                QMessageBox.warning(dialog, "Invalid Input", "Please enter a class name!")
+                return
+            
+            success, message = self.db.update_section(
+                section['section_id'], 
+                class_name,
+                section_value,
+                subject,
+                room
+            )
+            if success:
+                self.refresh_current_view()
+                dialog.accept()
+                QMessageBox.information(dialog, "Success", message)
+            else:
+                QMessageBox.warning(dialog, "Error", message)
+        
+        update_btn.clicked.connect(update_section)
+        
+        buttons_layout.addWidget(cancel_btn)
+        buttons_layout.addWidget(update_btn)
         layout.addLayout(buttons_layout)
         
         dialog.exec_()
@@ -645,10 +1264,26 @@ class MyClassesPage(QWidget):
         if reply == QMessageBox.Yes:
             success, message = self.db.archive_section(section['section_id'])
             if success:
-                self.load_sections()
+                self.refresh_current_view()
                 QMessageBox.information(self, "Success", message)
             else:
                 QMessageBox.warning(self, "Error", message)
+
+    def view_grades(self, section):
+        """View grades for a section"""
+        QMessageBox.information(
+            self, 
+            "Grades", 
+            f"Viewing grades for {section['section_name']}\n\nThis feature is coming soon!"
+        )
+
+    def view_attendance(self, section):
+        """View attendance for a section"""
+        QMessageBox.information(
+            self, 
+            "Attendance", 
+            f"Viewing attendance for {section['section_name']}\n\nThis feature is coming soon!"
+        )
 
     def add_student_dialog(self, section):
         self.show_student_dialog(section, None, "Add Student")
@@ -689,15 +1324,13 @@ class MyClassesPage(QWidget):
         # Input fields
         fields = {}
         field_configs = [
-            ("student_id", "Student ID", "e.g., 2024001"),
-            ("first_name", "First Name", "Enter first name"),
-            ("last_name", "Last Name", "Enter last name"),
-            ("age", "Age", "e.g., 20"),
-            ("email", "Email", "student@example.com"),
-            ("phone", "Phone Number", "e.g., 09123456789"),
-            ("birthday", "Birthday", "MM/DD/YYYY"),
+            ("student_id", "Student ID (Required)", "e.g., 0124-1579"),
+            ("full_name", "Full Name (Required)", "Enter full name"),
+            ("age", "Age (Required)", "e.g., 20"),
+            ("email", "Email (Required)", "student@example.com"),
+            ("phone", "Phone Number (11 digits)", "e.g., 09123456789"),
             ("address", "Address", "Enter complete address"),
-            ("grade", "Grade", "e.g., 1.5"),
+            ("grade", "Grade (e.g., 1.25, 1.50, 2.00)", "e.g., 1.50"),
         ]
         
         for field_key, label_text, placeholder in field_configs:
@@ -708,7 +1341,12 @@ class MyClassesPage(QWidget):
             field = QLineEdit()
             field.setPlaceholderText(placeholder)
             if student:
-                field.setText(str(student.get(field_key, '')))
+                if field_key == 'full_name':
+                    # Combine first_name and last_name for editing
+                    full_name = f"{student.get('first_name', '')} {student.get('last_name', '')}".strip()
+                    field.setText(full_name)
+                else:
+                    field.setText(str(student.get(field_key, '')))
             field.setStyleSheet("""
                 QLineEdit {
                     padding: 12px;
@@ -771,17 +1409,63 @@ class MyClassesPage(QWidget):
         """)
         
         def save_student():
-            # Collect data
-            new_student = {}
-            for key, field in fields.items():
-                value = field.text().strip()
-                if not value and key in ['student_id', 'first_name', 'last_name']:
-                    QMessageBox.warning(dialog, "Missing Information", 
-                                      f"Please fill in {key.replace('_', ' ').title()}!")
-                    return
-                new_student[key] = value
+            # Collect and validate data
+            student_id = fields['student_id'].text().strip()
+            full_name = fields['full_name'].text().strip()
+            age = fields['age'].text().strip()
+            email = fields['email'].text().strip()
+            phone = fields['phone'].text().strip()
+            address = fields['address'].text().strip()
+            grade = fields['grade'].text().strip()
             
-            new_student['section_id'] = section['section_id']
+            # Validation
+            if not student_id:
+                QMessageBox.warning(dialog, "Validation Error", "Student ID is required!")
+                return
+            if not full_name:
+                QMessageBox.warning(dialog, "Validation Error", "Full Name is required!")
+                return
+            if not age:
+                QMessageBox.warning(dialog, "Validation Error", "Age is required!")
+                return
+            if not age.isdigit():
+                QMessageBox.warning(dialog, "Validation Error", "Age must be a number!")
+                return
+            if not email:
+                QMessageBox.warning(dialog, "Validation Error", "Email is required!")
+                return
+            if '@' not in email or '.' not in email:
+                QMessageBox.warning(dialog, "Validation Error", "Please enter a valid email address!")
+                return
+            if phone and (not phone.isdigit() or len(phone) != 11):
+                QMessageBox.warning(dialog, "Validation Error", "Phone number must be exactly 11 digits!")
+                return
+            if grade:
+                try:
+                    grade_float = float(grade)
+                    if grade_float < 0 or grade_float > 5:
+                        QMessageBox.warning(dialog, "Validation Error", "Grade must be between 0.00 and 5.00!")
+                        return
+                except ValueError:
+                    QMessageBox.warning(dialog, "Validation Error", "Grade must be a valid number!")
+                    return
+            
+            # Split full name into first and last name
+            name_parts = full_name.split(maxsplit=1)
+            first_name = name_parts[0] if len(name_parts) > 0 else full_name
+            last_name = name_parts[1] if len(name_parts) > 1 else ''
+            
+            new_student = {
+                'student_id': student_id,
+                'section_id': section['section_id'],
+                'first_name': first_name,
+                'last_name': last_name,
+                'age': int(age),
+                'email': email,
+                'phone': phone if phone else None,
+                'address': address if address else None,
+                'grade': grade if grade else None
+            }
             
             # Save or update
             if student:
@@ -829,15 +1513,13 @@ class MyClassesPage(QWidget):
         # Input fields
         fields = {}
         field_configs = [
-            ("student_id", "Student ID", "e.g., 2024001"),
-            ("first_name", "First Name", "Enter first name"),
-            ("last_name", "Last Name", "Enter last name"),
-            ("age", "Age", "e.g., 20"),
-            ("email", "Email", "student@example.com"),
-            ("phone", "Phone Number", "e.g., 09123456789"),
-            ("birthday", "Birthday", "MM/DD/YYYY"),
+            ("student_id", "Student ID (Required)", "e.g., 0124-1579"),
+            ("full_name", "Full Name (Required)", "Enter full name"),
+            ("age", "Age (Required)", "e.g., 20"),
+            ("email", "Email (Required)", "student@example.com"),
+            ("phone", "Phone Number (11 digits)", "e.g., 09123456789"),
             ("address", "Address", "Enter complete address"),
-            ("grade", "Grade", "e.g., 1.5"),
+            ("grade", "Grade (e.g., 1.25, 1.50, 2.00)", "e.g., 1.50"),
         ]
         
         for field_key, label_text, placeholder in field_configs:
@@ -848,7 +1530,12 @@ class MyClassesPage(QWidget):
             field = QLineEdit()
             field.setPlaceholderText(placeholder)
             if student:
-                field.setText(str(student.get(field_key, '')))
+                if field_key == 'full_name':
+                    # Combine first_name and last_name for editing
+                    full_name = f"{student.get('first_name', '')} {student.get('last_name', '')}".strip()
+                    field.setText(full_name)
+                else:
+                    field.setText(str(student.get(field_key, '')))
             field.setStyleSheet("""
                 QLineEdit {
                     padding: 12px;
@@ -911,17 +1598,63 @@ class MyClassesPage(QWidget):
         """)
         
         def save_student():
-            # Collect data
-            new_student = {}
-            for key, field in fields.items():
-                value = field.text().strip()
-                if not value and key in ['student_id', 'first_name', 'last_name']:
-                    QMessageBox.warning(dialog, "Missing Information", 
-                                      f"Please fill in {key.replace('_', ' ').title()}!")
-                    return
-                new_student[key] = value
+            # Collect and validate data
+            student_id = fields['student_id'].text().strip()
+            full_name = fields['full_name'].text().strip()
+            age = fields['age'].text().strip()
+            email = fields['email'].text().strip()
+            phone = fields['phone'].text().strip()
+            address = fields['address'].text().strip()
+            grade = fields['grade'].text().strip()
             
-            new_student['section_id'] = section['section_id']
+            # Validation
+            if not student_id:
+                QMessageBox.warning(dialog, "Validation Error", "Student ID is required!")
+                return
+            if not full_name:
+                QMessageBox.warning(dialog, "Validation Error", "Full Name is required!")
+                return
+            if not age:
+                QMessageBox.warning(dialog, "Validation Error", "Age is required!")
+                return
+            if not age.isdigit():
+                QMessageBox.warning(dialog, "Validation Error", "Age must be a number!")
+                return
+            if not email:
+                QMessageBox.warning(dialog, "Validation Error", "Email is required!")
+                return
+            if '@' not in email or '.' not in email:
+                QMessageBox.warning(dialog, "Validation Error", "Please enter a valid email address!")
+                return
+            if phone and (not phone.isdigit() or len(phone) != 11):
+                QMessageBox.warning(dialog, "Validation Error", "Phone number must be exactly 11 digits!")
+                return
+            if grade:
+                try:
+                    grade_float = float(grade)
+                    if grade_float < 0 or grade_float > 5:
+                        QMessageBox.warning(dialog, "Validation Error", "Grade must be between 0.00 and 5.00!")
+                        return
+                except ValueError:
+                    QMessageBox.warning(dialog, "Validation Error", "Grade must be a valid number!")
+                    return
+            
+            # Split full name into first and last name
+            name_parts = full_name.split(maxsplit=1)
+            first_name = name_parts[0] if len(name_parts) > 0 else full_name
+            last_name = name_parts[1] if len(name_parts) > 1 else ''
+            
+            new_student = {
+                'student_id': student_id,
+                'section_id': section['section_id'],
+                'first_name': first_name,
+                'last_name': last_name,
+                'age': int(age),
+                'email': email,
+                'phone': phone if phone else None,
+                'address': address if address else None,
+                'grade': grade if grade else None
+            }
             
             # Save or update
             if student:
