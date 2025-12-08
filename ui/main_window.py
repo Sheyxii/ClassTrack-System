@@ -8,7 +8,6 @@ from .main.class_detail_page import ClassDetailPage
 from .main.attendance_page import AttendancePage
 from .main.schedule_page import SchedulePage
 from .main.resources_page import ResourcesPage
-from .main.settings_page import SettingsPage
 from .main.archive_page import ArchivePage
 
 
@@ -49,10 +48,10 @@ class MainWindow(QMainWindow):
         self.my_classes_page = MyClassesPage(self.user_id, self.dashboard_page)
         self.my_classes_page.main_window = self  # Set reference to main window
         self.attendance_page = AttendancePage()
-        self.schedule_page = SchedulePage()
-        self.resources_page = ResourcesPage()
+        self.schedule_page = SchedulePage(self.user_id)
+        self.resources_page = ResourcesPage(self.user_id)
+        self.resources_page.main_window = self  # Set reference to main window
         self.archive_page = ArchivePage(self.user_id, self.my_classes_page)
-        self.settings_page = SettingsPage()
         
         # Dictionary to store class detail pages
         self.class_pages = {}
@@ -64,7 +63,6 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.schedule_page)
         self.stacked_widget.addWidget(self.resources_page)
         self.stacked_widget.addWidget(self.archive_page)
-        self.stacked_widget.addWidget(self.settings_page)
 
         main_layout.addWidget(sidebar)
         main_layout.addWidget(content_frame)
@@ -72,7 +70,7 @@ class MainWindow(QMainWindow):
     def create_sidebar(self):
         sidebar = QFrame()
         sidebar.setStyleSheet("background-color: #555; color: white;")
-        sidebar.setFixedWidth(240)
+        sidebar.setFixedWidth(280)
         
         # Scroll area for sidebar
         scroll = QScrollArea()
@@ -81,120 +79,99 @@ class MainWindow(QMainWindow):
         
         sidebar_content = QWidget()
         sidebar_layout = QVBoxLayout(sidebar_content)
-        sidebar_layout.setContentsMargins(20, 30, 20, 30)
-        sidebar_layout.setSpacing(10)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
 
-        # Header with user profile
-        header_widget = QWidget()
-        header_widget.setStyleSheet("background: transparent;")
-        header_layout = QVBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.setSpacing(0)
-
-        # User profile card in sidebar
-        profile_card = QFrame()
-        profile_card.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #2C5F7C, stop:1 #4A7A9E);
-                border-radius: 0px;
-                padding: 20px;
-            }
-        """)
-        profile_card.setFixedHeight(100)
-        
-        profile_layout = QHBoxLayout(profile_card)
-        profile_layout.setContentsMargins(15, 15, 15, 15)
+        # User profile section at top
+        profile_widget = QWidget()
+        profile_widget.setStyleSheet("background-color: #2D3E50; padding: 0px;")
+        profile_layout = QVBoxLayout(profile_widget)
+        profile_layout.setContentsMargins(20, 30, 20, 30)
         profile_layout.setSpacing(15)
         
-        # Profile icon with border
-        profile_icon_container = QFrame()
-        profile_icon_container.setFixedSize(60, 60)
-        profile_icon_container.setStyleSheet("""
+        # Profile picture (circular)
+        profile_pic_container = QWidget()
+        profile_pic_container.setStyleSheet("background-color: transparent;")
+        profile_pic_layout = QHBoxLayout(profile_pic_container)
+        profile_pic_layout.setContentsMargins(0, 0, 0, 0)
+        profile_pic_layout.setAlignment(Qt.AlignCenter)
+        
+        profile_icon_frame = QFrame()
+        profile_icon_frame.setFixedSize(100, 80)
+        profile_icon_frame.setStyleSheet("""
             QFrame {
-                background-color: white;
-                border-radius: 30px;
-                border: 3px solid white;
+                background-color: transparent;
+                border-radius: 40px;
+                border: none;
             }
         """)
-        icon_layout = QHBoxLayout(profile_icon_container)
-        icon_layout.setContentsMargins(0, 0, 0, 0)
-        icon_layout.setAlignment(Qt.AlignCenter)
+        
+        profile_icon_layout = QHBoxLayout(profile_icon_frame)
+        profile_icon_layout.setContentsMargins(0, 0, 0, 0)
+        profile_icon_layout.setAlignment(Qt.AlignCenter)
         
         profile_icon = QLabel()
-        profile_icon.setPixmap(QIcon("image/user.png").pixmap(36, 36))
+        profile_icon.setPixmap(QIcon("image/user.png").pixmap(80, 80))
         profile_icon.setAlignment(Qt.AlignCenter)
-        icon_layout.addWidget(profile_icon)
+        profile_icon_layout.addWidget(profile_icon)
         
-        # User info
-        user_info_widget = QWidget()
-        user_info_widget.setStyleSheet("background: transparent;")
-        user_info_layout = QVBoxLayout(user_info_widget)
-        user_info_layout.setContentsMargins(0, 5, 0, 5)
-        user_info_layout.setSpacing(2)
+        profile_pic_layout.addWidget(profile_icon_frame)
+        profile_layout.addWidget(profile_pic_container)
         
-        user_name = QLabel(self.username)
-        user_name.setStyleSheet("font-size: 18px; color: white; font-weight: 700; background: transparent;")
-        
-        # Online status with green dot
-        status_widget = QWidget()
-        status_widget.setStyleSheet("background: transparent;")
-        status_layout = QHBoxLayout(status_widget)
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        status_layout.setSpacing(6)
-        
-        # Green dot indicator
-        online_dot = QLabel()
-        online_dot.setFixedSize(10, 10)
-        online_dot.setStyleSheet("""
-            QLabel {
-                background-color: #00D66B;
-                border-radius: 5px;
-            }
+        # Username
+        username_label = QLabel(self.username.upper())
+        username_label.setStyleSheet("""
+            font-size: 18px;
+            color: white;
+            font-weight: bold;
+            background-color: transparent;
         """)
+        username_label.setAlignment(Qt.AlignCenter)
+        profile_layout.addWidget(username_label)
         
-        online_label = QLabel("Online")
-        online_label.setStyleSheet("font-size: 13px; color: #00D66B; font-weight: 500; background: transparent;")
+        # ClassTrack label
+        classtrack_label = QLabel("ClassTrack")
+        classtrack_label.setStyleSheet("""
+            font-size: 25px;
+            color: white;
+            font-weight: 600;
+            background-color: transparent;
+        """)
+        classtrack_label.setAlignment(Qt.AlignCenter)
+        profile_layout.addWidget(classtrack_label)
         
-        status_layout.addWidget(online_dot)
-        status_layout.addWidget(online_label)
-        status_layout.addStretch()
+        sidebar_layout.addWidget(profile_widget)
         
-        user_info_layout.addWidget(user_name)
-        user_info_layout.addWidget(status_widget)
-        user_info_layout.addStretch()
-        
-        profile_layout.addWidget(profile_icon_container)
-        profile_layout.addWidget(user_info_widget)
-        profile_layout.addStretch()
-        
-        # Make profile card clickable
-        profile_card.mousePressEvent = lambda event: self.show_profile_menu(event, profile_card)
-        profile_card.setCursor(Qt.PointingHandCursor)
-        
-        header_layout.addWidget(profile_card)
-        sidebar_layout.addWidget(header_widget)
-        sidebar_layout.addSpacing(20)
+        # Navigation buttons container
+        nav_container = QWidget()
+        nav_container.setStyleSheet("background-color: transparent;")
+        nav_layout = QVBoxLayout(nav_container)
+        nav_layout.setContentsMargins(20, 20, 20, 30)
+        nav_layout.setSpacing(10)
 
         self.buttons = {}
         
         # Dashboard button
-        dashboard_btn = QPushButton("Dashboard")
+        dashboard_btn = QPushButton("  Dashboard")
+        dashboard_btn.setIcon(QIcon("image/dashboard.png"))
+        dashboard_btn.setIconSize(QSize(20, 20))
         dashboard_btn.setCursor(Qt.PointingHandCursor)
         dashboard_btn.setStyleSheet(self.get_main_button_style())
         dashboard_btn.setCheckable(True)
         dashboard_btn.clicked.connect(lambda: self.switch_page("Dashboard"))
         self.buttons["Dashboard"] = dashboard_btn
-        sidebar_layout.addWidget(dashboard_btn)
+        nav_layout.addWidget(dashboard_btn)
         
         # My Classes button with submenu
-        my_classes_btn = QPushButton("My Classes")
+        my_classes_btn = QPushButton("  My Classes")
+        my_classes_btn.setIcon(QIcon("image/classes.png"))
+        my_classes_btn.setIconSize(QSize(20, 20))
         my_classes_btn.setCursor(Qt.PointingHandCursor)
         my_classes_btn.setStyleSheet(self.get_main_button_style())
         my_classes_btn.setCheckable(True)
         my_classes_btn.clicked.connect(lambda: self.toggle_my_classes_submenu())
         self.buttons["My Classes"] = my_classes_btn
-        sidebar_layout.addWidget(my_classes_btn)
+        nav_layout.addWidget(my_classes_btn)
         
         # My Classes submenu container
         self.my_classes_submenu = QWidget()
@@ -207,41 +184,69 @@ class MainWindow(QMainWindow):
         self.load_class_submenus()
         
         self.my_classes_submenu.setVisible(False)
-        sidebar_layout.addWidget(self.my_classes_submenu)
+        nav_layout.addWidget(self.my_classes_submenu)
         
-        # Other main buttons
-        other_buttons = ["Resources"]
-        for b in other_buttons:
-            btn = QPushButton(b)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setStyleSheet(self.get_main_button_style())
-            btn.setCheckable(True)
-            btn.clicked.connect(lambda checked, name=b: self.switch_page(name))
-            self.buttons[b] = btn
-            sidebar_layout.addWidget(btn)
+        # Schedule button
+        schedule_btn = QPushButton("  Schedule")
+        schedule_btn.setIcon(QIcon("image/schedule.png"))
+        schedule_btn.setIconSize(QSize(20, 20))
+        schedule_btn.setCursor(Qt.PointingHandCursor)
+        schedule_btn.setStyleSheet(self.get_main_button_style())
+        schedule_btn.setCheckable(True)
+        schedule_btn.clicked.connect(lambda: self.switch_page("Schedule"))
+        self.buttons["Schedule"] = schedule_btn
+        nav_layout.addWidget(schedule_btn)
+        
+        # Resources button
+        resources_btn = QPushButton("  Resources")
+        resources_btn.setIcon(QIcon("image/resources.png"))
+        resources_btn.setIconSize(QSize(20, 20))
+        resources_btn.setCursor(Qt.PointingHandCursor)
+        resources_btn.setStyleSheet(self.get_main_button_style())
+        resources_btn.setCheckable(True)
+        resources_btn.clicked.connect(lambda: self.switch_page("Resources"))
+        self.buttons["Resources"] = resources_btn
+        nav_layout.addWidget(resources_btn)
         
         # Archive button
-        archive_btn = QPushButton("Archive")
+        archive_btn = QPushButton("  Archive")
+        archive_btn.setIcon(QIcon("image/archive.png"))
+        archive_btn.setIconSize(QSize(20, 20))
         archive_btn.setCursor(Qt.PointingHandCursor)
         archive_btn.setStyleSheet(self.get_main_button_style())
         archive_btn.setCheckable(True)
         archive_btn.clicked.connect(lambda: self.switch_page("Archive"))
         self.buttons["Archive"] = archive_btn
-        sidebar_layout.addWidget(archive_btn)
-        
-        # Settings button (last)
-        settings_btn = QPushButton("Settings")
-        settings_btn.setCursor(Qt.PointingHandCursor)
-        settings_btn.setStyleSheet(self.get_main_button_style())
-        settings_btn.setCheckable(True)
-        settings_btn.clicked.connect(lambda: self.switch_page("Settings"))
-        self.buttons["Settings"] = settings_btn
-        sidebar_layout.addWidget(settings_btn)
+        nav_layout.addWidget(archive_btn)
 
         # Set Dashboard as default
         self.buttons["Dashboard"].setChecked(True)
 
-        sidebar_layout.addStretch()
+        nav_layout.addStretch()
+        
+        # Logout button at bottom
+        logout_btn = QPushButton("  LOGOUT")
+        logout_btn.setIcon(QIcon("image/logout.png"))
+        logout_btn.setIconSize(QSize(20, 20))
+        logout_btn.setCursor(Qt.PointingHandCursor)
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: white;
+                font-size: 16px;
+                text-align: center;
+                padding: 12px;
+                border-radius: 8px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #C62828;
+            }
+        """)
+        logout_btn.clicked.connect(self.logout)
+        nav_layout.addWidget(logout_btn)
+        
+        sidebar_layout.addWidget(nav_container)
         scroll.setWidget(sidebar_content)
         
         sidebar_main_layout = QVBoxLayout(sidebar)
@@ -414,16 +419,17 @@ class MainWindow(QMainWindow):
             "My Classes": 1,
             "Schedule": 3,
             "Resources": 4,
-            "Archive": 5,
-            "Settings": 6
+            "Archive": 5
         }
         
         if page_name in page_map:
             self.stacked_widget.setCurrentIndex(page_map[page_name])
             
-            # Refresh archive page when switching to it
+            # Refresh pages when switching to them
             if page_name == "Archive":
                 self.archive_page.load_archived_sections()
+            elif page_name == "My Classes":
+                self.my_classes_page.load_sections()
 
     def open_class_page(self, section, card_color=None):
         """Open or create a class detail page for the given section"""
@@ -442,6 +448,9 @@ class MainWindow(QMainWindow):
             class_page = ClassDetailPage(section, self.user_id, card_color)
             class_page.main_window = self
             self.class_pages[section_id] = class_page
+            
+            # Connect grade update signal to dashboard refresh
+            class_page.grades_updated.connect(self.dashboard_page.refresh_outstanding_students)
             self.stacked_widget.addWidget(class_page)
         
         # Switch to the class page
@@ -455,3 +464,19 @@ class MainWindow(QMainWindow):
         # Update submenu button states
         for sid, btn in self.submenu_buttons.items():
             btn.setChecked(sid == section_id)
+    
+    def logout(self):
+        """Logout and return to login window"""
+        reply = QMessageBox.question(
+            self,
+            "Logout",
+            "Are you sure you want to logout?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            from .auth.login_window import LoginWindow
+            self.login_window = LoginWindow()
+            self.login_window.showMaximized()
+            self.close()

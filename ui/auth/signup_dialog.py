@@ -13,7 +13,7 @@ class SignupDialog(QDialog):
         self.setMinimumWidth(500)
         self.db = DatabaseConnection()
         
-        # Main layout
+        # Layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
@@ -23,21 +23,18 @@ class SignupDialog(QDialog):
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 28px; font-weight: 700; color: #222; margin-bottom: 10px;")
         
-        # Email
         email_label = QLabel("Email")
         email_label.setStyleSheet("font-weight: bold; color: #222;")
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("Enter your email")
         self.email_input.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; padding: 10px; font-size: 14px;")
         
-        # Username
         username_label = QLabel("Username")
         username_label.setStyleSheet("font-weight: bold; color: #222;")
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Choose a username")
         self.username_input.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; padding: 10px; font-size: 14px;")
         
-        # Password
         password_label = QLabel("Password")
         password_label.setStyleSheet("font-weight: bold; color: #222;")
         password_frame = QFrame()
@@ -58,7 +55,6 @@ class SignupDialog(QDialog):
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.password_eye_btn)
         
-        # Confirm Password
         confirm_label = QLabel("Confirm Password")
         confirm_label.setStyleSheet("font-weight: bold; color: #222;")
         confirm_frame = QFrame()
@@ -80,44 +76,13 @@ class SignupDialog(QDialog):
         confirm_layout.addWidget(self.confirm_input)
         confirm_layout.addWidget(self.confirm_eye_btn)
         
-        # Terms & Conditions Checkbox
         self.terms_checkbox = QCheckBox("I agree to the Terms & Conditions")
         self.terms_checkbox.setStyleSheet("color: #666; font-size: 13px;")
         
-        # Signup Button
         signup_btn = QPushButton("Signup")
         signup_btn.setCursor(Qt.PointingHandCursor)
         signup_btn.clicked.connect(self.create_account)
         signup_btn.setStyleSheet("background-color: #222; color: white; font-weight: bold; border-radius: 20px; padding: 12px; font-size: 15px;")
-        
-        # Login Link
-        login_frame = QFrame()
-        login_layout = QHBoxLayout(login_frame)
-        login_layout.setAlignment(Qt.AlignCenter)
-        login_layout.setSpacing(5)
-        
-        login_label = QLabel("Don't have an account?")
-        login_label.setStyleSheet("color: #666; font-size: 13px;")
-        
-        login_link = QPushButton("Log in")
-        login_link.setCursor(Qt.PointingHandCursor)
-        login_link.clicked.connect(self.reject)
-        login_link.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #E75480;
-                font-weight: bold;
-                font-size: 13px;
-                border: none;
-                text-decoration: underline;
-            }
-            QPushButton:hover {
-                color: #D04070;
-            }
-        """)
-        
-        login_layout.addWidget(login_label)
-        login_layout.addWidget(login_link)
         
         # Add all widgets to layout
         layout.addWidget(title)
@@ -132,7 +97,6 @@ class SignupDialog(QDialog):
         layout.addWidget(self.terms_checkbox)
         layout.addSpacing(10)
         layout.addWidget(signup_btn)
-        layout.addWidget(login_frame)
     
     def toggle_password(self, checked):
         if checked:
@@ -151,13 +115,13 @@ class SignupDialog(QDialog):
             self.confirm_eye_btn.setIcon(QIcon("image/eye.png"))
     
     def create_account(self):
-        # Get input values
+        # Get inputs
         email = self.email_input.text().strip()
         username = self.username_input.text().strip()
         password = self.password_input.text()
         confirm_password = self.confirm_input.text()
         
-        # Validate inputs
+        # Validate fields
         if not all([email, username, password, confirm_password]):
             QMessageBox.warning(self, "Input Error", "Please fill in all fields")
             return

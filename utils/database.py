@@ -358,7 +358,7 @@ class DatabaseConnection:
     def add_student(self, student_data):
         """
         Mag-add ng new student
-        student_data: dict with keys: student_id, section_id, first_name, last_name, age, email, phone, birthday, address, grade
+        student_data: dict with keys: student_id, section_id, first_name, last_name, age, email, phone, birthday, address
         Returns: (success: bool, message: str)
         """
         required_fields = ['student_id', 'section_id', 'first_name', 'last_name']
@@ -382,8 +382,8 @@ class DatabaseConnection:
             
             # I-insert ang new student
             insert_query = """
-                INSERT INTO students (student_id, section_id, first_name, last_name, age, email, phone, birthday, address, grade)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO students (student_id, section_id, first_name, last_name, age, email, phone, birthday, address)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(insert_query, (
                 student_data['student_id'],
@@ -394,8 +394,7 @@ class DatabaseConnection:
                 student_data.get('email'),
                 student_data.get('phone'),
                 student_data.get('birthday'),
-                student_data.get('address'),
-                student_data.get('grade')
+                student_data.get('address')
             ))
             self.connection.commit()
             cursor.close()
@@ -424,8 +423,7 @@ class DatabaseConnection:
                     email = %s,
                     phone = %s,
                     birthday = %s,
-                    address = %s,
-                    grade = %s
+                    address = %s
                 WHERE student_id = %s
             """
             cursor.execute(update_query, (
@@ -436,7 +434,6 @@ class DatabaseConnection:
                 student_data.get('phone'),
                 student_data.get('birthday'),
                 student_data.get('address'),
-                student_data.get('grade'),
                 student_id
             ))
             self.connection.commit()
@@ -447,9 +444,10 @@ class DatabaseConnection:
             self.disconnect()
             return False, f"Database error: {e}"
     
-    def archive_student(self, student_id):
+    def archive_student(self, student_id, section_id=None):
         """
         I-archive ang student (soft delete)
+        If section_id is provided, only archive for that section
         Returns: (success: bool, message: str)
         """
         if not self.connect():
@@ -457,8 +455,12 @@ class DatabaseConnection:
         
         try:
             cursor = self.connection.cursor()
-            query = "UPDATE students SET is_archived = TRUE, archived_at = NOW() WHERE student_id = %s"
-            cursor.execute(query, (student_id,))
+            if section_id:
+                query = "UPDATE students SET is_archived = TRUE, archived_at = NOW() WHERE student_id = %s AND section_id = %s"
+                cursor.execute(query, (student_id, section_id))
+            else:
+                query = "UPDATE students SET is_archived = TRUE, archived_at = NOW() WHERE student_id = %s"
+                cursor.execute(query, (student_id,))
             self.connection.commit()
             cursor.close()
             self.disconnect()
@@ -467,9 +469,10 @@ class DatabaseConnection:
             self.disconnect()
             return False, f"Database error: {e}"
     
-    def restore_student(self, student_id):
+    def restore_student(self, student_id, section_id=None):
         """
         I-restore ang archived student
+        If section_id is provided, only restore for that section
         Returns: (success: bool, message: str)
         """
         if not self.connect():
@@ -477,8 +480,12 @@ class DatabaseConnection:
         
         try:
             cursor = self.connection.cursor()
-            query = "UPDATE students SET is_archived = FALSE, archived_at = NULL WHERE student_id = %s"
-            cursor.execute(query, (student_id,))
+            if section_id:
+                query = "UPDATE students SET is_archived = FALSE, archived_at = NULL WHERE student_id = %s AND section_id = %s"
+                cursor.execute(query, (student_id, section_id))
+            else:
+                query = "UPDATE students SET is_archived = FALSE, archived_at = NULL WHERE student_id = %s"
+                cursor.execute(query, (student_id,))
             self.connection.commit()
             cursor.close()
             self.disconnect()
@@ -487,17 +494,22 @@ class DatabaseConnection:
             self.disconnect()
             return False, f"Database error: {e}"
     
-    def delete_student_permanently(self, student_id):
+    def delete_student_permanently(self, student_id, section_id=None):
  
         # Permanent delete ang student
+        # If section_id is provided, only delete for that section
   
         if not self.connect():
             return False, "Database connection failed"
         
         try:
             cursor = self.connection.cursor()
-            query = "DELETE FROM students WHERE student_id = %s"
-            cursor.execute(query, (student_id,))
+            if section_id:
+                query = "DELETE FROM students WHERE student_id = %s AND section_id = %s"
+                cursor.execute(query, (student_id, section_id))
+            else:
+                query = "DELETE FROM students WHERE student_id = %s"
+                cursor.execute(query, (student_id,))
             self.connection.commit()
             cursor.close()
             self.disconnect()
@@ -577,4 +589,457 @@ class DatabaseConnection:
             print(f"Error fetching section statistics: {e}")
             self.disconnect()
             return {}
+    
+    def save_attendance(self, section_id, attendance_date, attendance_data):
+        """Save attendance record for a section"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # Insert or get attendance record for this date
+            cursor.execute("""
+                INSERT INTO attendance (section_id, attendance_date) 
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE attendance_id=LAST_INSERT_ID(attendance_id)
+            """, (section_id, attendance_date))
+            
+            attendance_id = cursor.lastrowid
+            if attendance_id == 0:
+                cursor.execute("""
+                    SELECT attendance_id FROM attendance 
+                    WHERE section_id = %s AND attendance_date = %s
+                """, (section_id, attendance_date))
+                result = cursor.fetchone()
+                attendance_id = result[0] if result else None
+            
+            if not attendance_id:
+                return False
+            
+            # Delete existing records for this attendance
+            cursor.execute("""
+                DELETE FROM attendance_records WHERE attendance_id = %s
+            """, (attendance_id,))
+            
+            # Insert new attendance records
+            for student_id, data in attendance_data.items():
+                status = data.get('status')
+                if status:
+                    cursor.execute("""
+                        INSERT INTO attendance_records 
+                        (attendance_id, student_id, section_id, status)
+                        VALUES (%s, %s, %s, %s)
+                    """, (attendance_id, student_id, section_id, status))
+            
+            self.connection.commit()
+            return True
+            
+        except Error as e:
+            print(f"Error saving attendance: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+        finally:
+            self.disconnect()
+    
+    def get_attendance_records(self, section_id):
+        """Get all attendance records for a section"""
+        if not self.connect():
+            return []
+        
+        try:
+            cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+            
+            # Get all attendance dates for this section
+            cursor.execute("""
+                SELECT 
+                    a.attendance_id,
+                    a.attendance_date,
+                    DAYNAME(a.attendance_date) as day_name,
+                    COUNT(ar.record_id) as total_marked,
+                    SUM(CASE WHEN ar.status = 'present' THEN 1 ELSE 0 END) as present_count,
+                    SUM(CASE WHEN ar.status = 'absent' THEN 1 ELSE 0 END) as absent_count
+                FROM attendance a
+                LEFT JOIN attendance_records ar ON a.attendance_id = ar.attendance_id
+                WHERE a.section_id = %s
+                GROUP BY a.attendance_id, a.attendance_date
+                ORDER BY a.attendance_date DESC
+            """, (section_id,))
+            
+            return cursor.fetchall()
+            
+        except Error as e:
+            print(f"Error getting attendance records: {e}")
+            return []
+        finally:
+            self.disconnect()
+    
+    def get_attendance_details(self, attendance_id):
+        """Get detailed attendance records for a specific date"""
+        if not self.connect():
+            return {}
+        
+        try:
+            cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+            
+            cursor.execute("""
+                SELECT student_id, status
+                FROM attendance_records
+                WHERE attendance_id = %s
+            """, (attendance_id,))
+            
+            records = cursor.fetchall()
+            return {record['student_id']: {'status': record['status']} for record in records}
+            
+        except Error as e:
+            print(f"Error getting attendance details: {e}")
+            return {}
+        finally:
+            self.disconnect()
+    
+    def delete_attendance(self, attendance_id):
+        """Delete an attendance record"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("DELETE FROM attendance WHERE attendance_id = %s", (attendance_id,))
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"Error deleting attendance: {e}")
+            return False
+        finally:
+            self.disconnect()
+    def save_attendance(self, section_id, attendance_date, attendance_data):
+        """Save attendance record for a section"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # Insert or get attendance record for this date
+            cursor.execute("""
+                INSERT INTO attendance (section_id, attendance_date) 
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE attendance_id=LAST_INSERT_ID(attendance_id)
+            """, (section_id, attendance_date))
+            
+            attendance_id = cursor.lastrowid
+            if attendance_id == 0:
+                cursor.execute("""
+                    SELECT attendance_id FROM attendance 
+                    WHERE section_id = %s AND attendance_date = %s
+                """, (section_id, attendance_date))
+                result = cursor.fetchone()
+                attendance_id = result[0] if result else None
+            
+            if not attendance_id:
+                return False
+            
+            # Delete existing records for this attendance
+            cursor.execute("""
+                DELETE FROM attendance_records WHERE attendance_id = %s
+            """, (attendance_id,))
+            
+            # Insert new attendance records
+            for student_id, data in attendance_data.items():
+                status = data.get('status')
+                if status:
+                    cursor.execute("""
+                        INSERT INTO attendance_records 
+                        (attendance_id, student_id, section_id, status)
+                        VALUES (%s, %s, %s, %s)
+                    """, (attendance_id, student_id, section_id, status))
+            
+            self.connection.commit()
+            return True
+            
+        except Error as e:
+            print(f"Error saving attendance: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+        finally:
+            self.disconnect()
+    
+    def get_attendance_records(self, section_id):
+        """Get all attendance records for a section"""
+        if not self.connect():
+            return []
+        
+        try:
+            cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+            
+            # Get all attendance dates for this section
+            cursor.execute("""
+                SELECT 
+                    a.attendance_id,
+                    a.attendance_date,
+                    DAYNAME(a.attendance_date) as day_name,
+                    COUNT(ar.record_id) as total_marked,
+                    SUM(CASE WHEN ar.status = 'present' THEN 1 ELSE 0 END) as present_count,
+                    SUM(CASE WHEN ar.status = 'absent' THEN 1 ELSE 0 END) as absent_count
+                FROM attendance a
+                LEFT JOIN attendance_records ar ON a.attendance_id = ar.attendance_id
+                WHERE a.section_id = %s
+                GROUP BY a.attendance_id, a.attendance_date
+                ORDER BY a.attendance_date DESC
+            """, (section_id,))
+            
+            return cursor.fetchall()
+            
+        except Error as e:
+            print(f"Error getting attendance records: {e}")
+            return []
+        finally:
+            self.disconnect()
+    
+    def get_attendance_details(self, attendance_id):
+        """Get detailed attendance records for a specific date"""
+        if not self.connect():
+            return {}
+        
+        try:
+            cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+            
+            cursor.execute("""
+                SELECT student_id, status
+                FROM attendance_records
+                WHERE attendance_id = %s
+            """, (attendance_id,))
+            
+            records = cursor.fetchall()
+            return {record['student_id']: {'status': record['status']} for record in records}
+            
+        except Error as e:
+            print(f"Error getting attendance details: {e}")
+            return {}
+        finally:
+            self.disconnect()
+    
+    def delete_attendance(self, attendance_id):
+        """Delete an attendance record"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("DELETE FROM attendance WHERE attendance_id = %s", (attendance_id,))
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"Error deleting attendance: {e}")
+            return False
+        finally:
+            self.disconnect()
+
+    # ==================== RESOURCES METHODS ====================
+    
+    def add_resource(self, user_id, file_name, subject, file_path, file_size):
+        """Add a new resource to database"""
+        if not self.connect():
+            return False, "Database connection failed"
+        
+        try:
+            cursor = self.connection.cursor()
+            query = """
+                INSERT INTO resources (user_id, file_name, subject, file_path, file_size)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (user_id, file_name, subject, file_path, file_size))
+            resource_id = cursor.lastrowid
+            self.connection.commit()
+            cursor.close()
+            self.disconnect()
+            return True, resource_id
+        except Error as e:
+            print(f"Error adding resource: {e}")
+            self.disconnect()
+            return False, str(e)
+    
+    def get_resources(self, user_id):
+        """Get all resources for a user"""
+        if not self.connect():
+            return []
+        
+        try:
+            cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+            query = """
+                SELECT resource_id, file_name, subject, file_path, file_size,
+                       DATE_FORMAT(uploaded_at, '%%Y-%%m-%%d') as uploaded
+                FROM resources
+                WHERE user_id = %s
+                ORDER BY uploaded_at DESC
+            """
+            cursor.execute(query, (user_id,))
+            resources = cursor.fetchall()
+            cursor.close()
+            self.disconnect()
+            return resources
+        except Error as e:
+            print(f"Error fetching resources: {e}")
+            self.disconnect()
+            return []
+    
+    def delete_resource(self, resource_id):
+        """Delete a resource from database"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("DELETE FROM resources WHERE resource_id = %s", (resource_id,))
+            self.connection.commit()
+            cursor.close()
+            self.disconnect()
+            return True
+        except Error as e:
+            print(f"Error deleting resource: {e}")
+            self.disconnect()
+            return False
+    
+    def save_student_grades(self, student_id, section_id, midterm, final):
+        """Save or update student grades"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # Check if grades already exist
+            check_query = """
+                SELECT grade_id FROM grades 
+                WHERE student_id = %s AND section_id = %s
+            """
+            cursor.execute(check_query, (student_id, section_id))
+            existing = cursor.fetchone()
+            
+            if existing:
+                # Update existing grades
+                update_query = """
+                    UPDATE grades 
+                    SET midterm = %s, final = %s, updated_at = NOW()
+                    WHERE student_id = %s AND section_id = %s
+                """
+                cursor.execute(update_query, (midterm, final, student_id, section_id))
+            else:
+                # Insert new grades
+                insert_query = """
+                    INSERT INTO grades (student_id, section_id, midterm, final)
+                    VALUES (%s, %s, %s, %s)
+                """
+                cursor.execute(insert_query, (student_id, section_id, midterm, final))
+            
+            self.connection.commit()
+            cursor.close()
+            self.disconnect()
+            return True
+        except Error as e:
+            print(f"Error saving grades: {e}")
+            self.disconnect()
+            return False
+    
+    def get_student_grades(self, student_id, section_id):
+        """Get student grades for a specific section"""
+        if not self.connect():
+            return {}
+        
+        try:
+            cursor = self.connection.cursor(pymysql.cursors.DictCursor)
+            query = """
+                SELECT midterm, final 
+                FROM grades 
+                WHERE student_id = %s AND section_id = %s
+            """
+            cursor.execute(query, (student_id, section_id))
+            grades = cursor.fetchone()
+            cursor.close()
+            self.disconnect()
+            return grades if grades else {}
+        except Error as e:
+            print(f"Error fetching grades: {e}")
+            self.disconnect()
+            return {}
+    
+    def add_schedule(self, user_id, subject, section, day, time, room, color):
+        """Add a new schedule"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            query = """
+                INSERT INTO schedules (user_id, subject, section, day, time, room, color)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(query, (user_id, subject, section, day, time, room, color))
+            self.connection.commit()
+            cursor.close()
+            self.disconnect()
+            return True
+        except Error as e:
+            print(f"Error adding schedule: {e}")
+            self.disconnect()
+            return False
+    
+    def get_schedules(self, user_id):
+        """Get all schedules for a user"""
+        if not self.connect():
+            return []
+        
+        try:
+            cursor = self.connection.cursor()
+            query = """
+                SELECT schedule_id, subject, section, day, time, room, color
+                FROM schedules
+                WHERE user_id = %s
+                ORDER BY 
+                    FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'),
+                    time
+            """
+            cursor.execute(query, (user_id,))
+            rows = cursor.fetchall()
+            
+            # Convert to list of dictionaries
+            schedules = []
+            for row in rows:
+                schedules.append({
+                    'schedule_id': row[0],
+                    'subject': row[1],
+                    'section': row[2],
+                    'day': row[3],
+                    'time': row[4],
+                    'room': row[5],
+                    'color': row[6]
+                })
+            
+            cursor.close()
+            self.disconnect()
+            return schedules
+        except Error as e:
+            print(f"Error fetching schedules: {e}")
+            self.disconnect()
+            return []
+    
+    def delete_schedule(self, schedule_id):
+        """Delete a schedule"""
+        if not self.connect():
+            return False
+        
+        try:
+            cursor = self.connection.cursor()
+            query = "DELETE FROM schedules WHERE schedule_id = %s"
+            cursor.execute(query, (schedule_id,))
+            self.connection.commit()
+            cursor.close()
+            self.disconnect()
+            return True
+        except Error as e:
+            print(f"Error deleting schedule: {e}")
+            self.disconnect()
+            return False
 

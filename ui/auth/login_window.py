@@ -15,7 +15,7 @@ class LoginWindow(QWidget):
         self.setStyleSheet("background-color: #E7E9E5;")
         self.db = DatabaseConnection()
 
-        # Main layout
+        # Layout
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(120, 60, 120, 60)
         main_layout.setSpacing(150)
@@ -37,7 +37,6 @@ class LoginWindow(QWidget):
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("color: gray; font-size: 20px;")
 
-        # user / Password
         user_frame = QFrame()
         user_layout = QHBoxLayout(user_frame)
         user_layout.setContentsMargins(0, 0, 0, 0)
@@ -72,7 +71,6 @@ class LoginWindow(QWidget):
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.eye_btn)
 
-        # Login Button
         login_btn = QPushButton("Log In")
         login_btn.setCursor(Qt.PointingHandCursor)
         login_btn.clicked.connect(self.open_dashboard)
@@ -173,7 +171,7 @@ class LoginWindow(QWidget):
         username = self.user_input.text()
         password = self.password_input.text()
         
-        # Validate inputs
+        # Validate fields
         if not username or not password:
             QMessageBox.warning(self, "Input Error", "Please enter both username and password")
             return

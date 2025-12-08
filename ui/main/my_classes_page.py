@@ -37,22 +37,21 @@ class MyClassesPage(QWidget):
         header_layout.addStretch()
         
         # Create Class button
-        self.add_class_btn = QPushButton("⊕ CREATE CLASS")
+        self.add_class_btn = QPushButton("+ CREATE CLASS")
         self.add_class_btn.setCursor(Qt.PointingHandCursor)
         self.add_class_btn.setFixedHeight(45)
         self.add_class_btn.setStyleSheet("""
             QPushButton {
-                background-color: white;
-                color: #222;
-                border: 2px solid #DDD;
+                background-color: black;
+                color: white;
+                border: none;
                 border-radius: 8px;
                 padding: 10px 25px;
                 font-size: 14px;
                 font-weight: 700;
             }
             QPushButton:hover {
-                background-color: #F5F5F5;
-                border-color: #BBB;
+                background-color: #333;
             }
         """)
         self.add_class_btn.clicked.connect(self.add_section_dialog)
@@ -114,7 +113,7 @@ class MyClassesPage(QWidget):
         
         # Main card container
         card = QFrame()
-        card.setFixedSize(513, 250)
+        card.setFixedSize(504, 250)
         card.setStyleSheet("""
             QFrame {
                 background-color: white;
@@ -169,10 +168,10 @@ class MyClassesPage(QWidget):
         
         # Icon container on top right
         icon_container = QWidget()
-        icon_container.setFixedSize(60, 60)
+        icon_container.setFixedSize(80, 80)
         icon_container.setStyleSheet(f"""
             QWidget {{
-                background-color: {icon_bg};
+                background-color: transparent;
                 border-radius: 12px;
             }}
         """)
@@ -271,13 +270,13 @@ class MyClassesPage(QWidget):
             }
         """)
         
-        update_action = QAction("✏️ Update", menu)
+        update_action = QAction(" Update", menu)
         update_action.triggered.connect(lambda: self.update_section_dialog(section))
         menu.addAction(update_action)
         
-        archive_action = QAction("📦 Archive", menu)
-        archive_action.triggered.connect(lambda: self.archive_section(section))
-        menu.addAction(archive_action)
+        delete_action = QAction(" Delete", menu)
+        delete_action.triggered.connect(lambda: self.archive_section(section))
+        menu.addAction(delete_action)
         
         dropdown_btn.setMenu(menu)
         dropdown_btn.clicked.connect(lambda: menu.exec_(dropdown_btn.mapToGlobal(dropdown_btn.rect().bottomLeft())))
@@ -303,6 +302,9 @@ class MyClassesPage(QWidget):
                 self.main_window.class_pages.clear()  # Clear cached class pages
             if hasattr(self.main_window, 'load_class_submenus'):
                 self.main_window.load_class_submenus()  # Reload submenu items
+            # Refresh dashboard statistics
+            if hasattr(self.main_window, 'dashboard_page'):
+                self.main_window.dashboard_page.refresh_statistics()
 
     def load_sections_for_view(self, view_type):
         """Load sections for grades or attendance view"""
@@ -525,19 +527,7 @@ class MyClassesPage(QWidget):
             if key in section_name.upper():
                 return colors[key]
         return '#E5E5E5'
-    
-    def get_section_icon(self, section_name):
-        """Kumuha ng icon/emoji based sa section name"""
-        icons = {
-            'ITEC': '💻',
-            'CMSC': '🖥️',
-            'BSCS': '⚙️',
-            'BSIT': '📱',
-        }
-        for key in icons:
-            if key in section_name.upper():
-                return icons[key]
-        return '📚'
+
 
     def view_section_details(self, section):
         """Buksan ang dialog na nagpapakita ng section details at students"""
@@ -669,10 +659,10 @@ class MyClassesPage(QWidget):
     def create_students_table(self, section, students):
         table = QTableWidget()
         table.setRowCount(len(students))
-        table.setColumnCount(9)
+        table.setColumnCount(8)
         table.setHorizontalHeaderLabels([
             "Student ID", "First Name", "Last Name", "Age", 
-            "Email", "Phone", "Birthday", "Grade", "Actions"
+            "Email", "Phone", "Birthday", "Actions"
         ])
         table.horizontalHeader().setStyleSheet("""
             QHeaderView::section {
@@ -724,11 +714,10 @@ class MyClassesPage(QWidget):
             table.setItem(row, 4, QTableWidgetItem(student.get('email', '')))
             table.setItem(row, 5, QTableWidgetItem(student.get('phone', '')))
             table.setItem(row, 6, QTableWidgetItem(student.get('birthday', '')))
-            table.setItem(row, 7, QTableWidgetItem(str(student.get('grade', ''))))
             
             # Action buttons widget
             actions_widget = self.create_action_buttons(section, student)
-            table.setCellWidget(row, 8, actions_widget)
+            table.setCellWidget(row, 7, actions_widget)
             table.setRowHeight(row, 50)
         
         return table
@@ -737,10 +726,10 @@ class MyClassesPage(QWidget):
         """Gumawa ng students table with refresh capability"""
         table = QTableWidget()
         table.setRowCount(len(students))
-        table.setColumnCount(9)
+        table.setColumnCount(8)
         table.setHorizontalHeaderLabels([
             "Student ID", "First Name", "Last Name", "Age", 
-            "Email", "Phone", "Birthday", "Grade", "Actions"
+            "Email", "Phone", "Birthday", "Actions"
         ])
         table.horizontalHeader().setStyleSheet("""
             QHeaderView::section {
@@ -780,9 +769,8 @@ class MyClassesPage(QWidget):
         table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)  # Email
         table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Phone
         table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Birthday
-        table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeToContents)  # Grade
-        table.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)  # Actions
-        table.setColumnWidth(8, 100)
+        table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)  # Actions
+        table.setColumnWidth(7, 100)
         
         for row, student in enumerate(students):
             table.setItem(row, 0, QTableWidgetItem(student.get('student_id', '')))
@@ -792,12 +780,11 @@ class MyClassesPage(QWidget):
             table.setItem(row, 4, QTableWidgetItem(student.get('email', '')))
             table.setItem(row, 5, QTableWidgetItem(student.get('phone', '')))
             table.setItem(row, 6, QTableWidgetItem(student.get('birthday', '')))
-            table.setItem(row, 7, QTableWidgetItem(str(student.get('grade', ''))))
             
             # Action buttons widget with refresh callback
             actions_widget = self.create_action_buttons_with_refresh(section, student, refresh_callback)
-            table.setCellWidget(row, 8, actions_widget)
-            table.setRowHeight(row, 50)
+            table.setCellWidget(row, 7, actions_widget)
+            table.setRowHeight(row, 55)
         
         return table
 
@@ -807,12 +794,13 @@ class MyClassesPage(QWidget):
         actions_layout = QHBoxLayout(actions_widget)
         actions_layout.setContentsMargins(5, 0, 5, 0)
         actions_layout.setSpacing(5)
+        actions_layout.setAlignment(Qt.AlignCenter)
         
         edit_btn = QPushButton()
         edit_btn.setIcon(QIcon("image/edit.png"))
-        edit_btn.setIconSize(QSize(18, 18))
+        edit_btn.setIconSize(QSize(16, 16))
         edit_btn.setCursor(Qt.PointingHandCursor)
-        edit_btn.setFixedSize(35, 35)
+        edit_btn.setFixedSize(32, 32)
         edit_btn.setStyleSheet("""
             QPushButton {
                 background-color: #E6EFFA;
@@ -826,9 +814,9 @@ class MyClassesPage(QWidget):
         
         delete_btn = QPushButton()
         delete_btn.setIcon(QIcon("image/bin.png"))
-        delete_btn.setIconSize(QSize(18, 18))
+        delete_btn.setIconSize(QSize(16, 16))
         delete_btn.setCursor(Qt.PointingHandCursor)
-        delete_btn.setFixedSize(35, 35)
+        delete_btn.setFixedSize(32, 32)
         delete_btn.setStyleSheet("""
             QPushButton {
                 background-color: #FFE6E6;
@@ -851,12 +839,13 @@ class MyClassesPage(QWidget):
         actions_layout = QHBoxLayout(actions_widget)
         actions_layout.setContentsMargins(5, 0, 5, 0)
         actions_layout.setSpacing(5)
+        actions_layout.setAlignment(Qt.AlignCenter)
         
         edit_btn = QPushButton()
         edit_btn.setIcon(QIcon("image/edit.png"))
-        edit_btn.setIconSize(QSize(18, 18))
+        edit_btn.setIconSize(QSize(16, 16))
         edit_btn.setCursor(Qt.PointingHandCursor)
-        edit_btn.setFixedSize(35, 35)
+        edit_btn.setFixedSize(32, 32)
         edit_btn.setStyleSheet("""
             QPushButton {
                 background-color: #E6EFFA;
@@ -870,9 +859,9 @@ class MyClassesPage(QWidget):
         
         delete_btn = QPushButton()
         delete_btn.setIcon(QIcon("image/bin.png"))
-        delete_btn.setIconSize(QSize(18, 18))
+        delete_btn.setIconSize(QSize(16, 16))
         delete_btn.setCursor(Qt.PointingHandCursor)
-        delete_btn.setFixedSize(35, 35)
+        delete_btn.setFixedSize(32, 32)
         delete_btn.setStyleSheet("""
             QPushButton {
                 background-color: #FFE6E6;
@@ -1256,8 +1245,10 @@ class MyClassesPage(QWidget):
         if reply == QMessageBox.Yes:
             success, message = self.db.archive_section(section['section_id'])
             if success:
+                # First refresh the view
                 self.refresh_current_view()
-                QMessageBox.information(self, "Success", message)
+                # Then show success message after refresh is complete
+                QTimer.singleShot(100, lambda: QMessageBox.information(self, "Success", message))
             else:
                 QMessageBox.warning(self, "Error", message)
 
@@ -1685,7 +1676,7 @@ class MyClassesPage(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            success, message = self.db.archive_student(student['student_id'])
+            success, message = self.db.archive_student(student['student_id'], student['section_id'])
             if success:
                 # I-refresh ang table immediately
                 refresh_callback()
@@ -1706,7 +1697,7 @@ class MyClassesPage(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            success, message = self.db.archive_student(student['student_id'])
+            success, message = self.db.archive_student(student['student_id'], student['section_id'])
             if success:
                 self.load_sections()
                 QMessageBox.information(self, "Success", message)
@@ -2045,7 +2036,7 @@ class MyClassesPage(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            success, message = self.db.restore_student(student['student_id'])
+            success, message = self.db.restore_student(student['student_id'], student['section_id'])
             if success:
                 self.load_sections()
                 # Refresh the section details dialog if callback is provided
@@ -2066,7 +2057,7 @@ class MyClassesPage(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            success, message = self.db.delete_student_permanently(student['student_id'])
+            success, message = self.db.delete_student_permanently(student['student_id'], student['section_id'])
             if success:
                 self.load_sections()
                 parent_dialog.accept()

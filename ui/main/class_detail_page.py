@@ -6,7 +6,32 @@ sys.path.append('..')
 from utils.database import DatabaseConnection
 
 
+class GradeLineEdit(QLineEdit):
+    """Custom QLineEdit that shows error message for invalid input"""
+    def __init__(self, parent_widget, field_name):
+        super().__init__()
+        self.parent_widget = parent_widget
+        self.field_name = field_name
+    
+    def keyPressEvent(self, event):
+        # Check if the key is valid (digit, decimal point, backspace, delete, arrow keys, etc.)
+        key = event.text()
+        allowed_keys = [Qt.Key_Backspace, Qt.Key_Delete, Qt.Key_Left, Qt.Key_Right, 
+                       Qt.Key_Tab, Qt.Key_Home, Qt.Key_End, Qt.Key_Return, Qt.Key_Enter]
+        
+        if key and key not in '0123456789.' and event.key() not in allowed_keys:
+            QMessageBox.warning(
+                self.parent_widget,
+                "Invalid Input",
+                f"Please enter only numbers and decimal point (.) for {self.field_name}.\n\nLetters and symbols are not allowed."
+            )
+            return  # Ignore the key press
+        super().keyPressEvent(event)
+
+
 class ClassDetailPage(QWidget):
+    grades_updated = pyqtSignal()  # Signal for when grades are updated
+    
     def __init__(self, section, user_id=1, card_color=None):
         super().__init__()
         self.section = section
@@ -15,8 +40,33 @@ class ClassDetailPage(QWidget):
         self.db = DatabaseConnection()
         self.current_tab = 'attendance'
         self.class_title = None  # Will store reference to title label
-        self.attendance_records = []  # Store attendance records
+        self.load_attendance_from_database()  # Load attendance records from database
         self.init_ui()
+
+    def load_attendance_from_database(self):
+        """Load attendance records from database"""
+        self.attendance_records = []
+        
+        db_records = self.db.get_attendance_records(self.section['section_id'])
+        
+        for record in db_records:
+            # Get detailed attendance data
+            attendance_data = self.db.get_attendance_details(record['attendance_id'])
+            
+            # Format date
+            date_obj = record['attendance_date']
+            formatted_date = date_obj.strftime('%B %d, %Y')
+            day_name = record['day_name']
+            
+            self.attendance_records.append({
+                'attendance_id': record['attendance_id'],
+                'date': formatted_date,
+                'day': day_name,
+                'total': int(record['total_marked'] or 0),
+                'present': int(record['present_count'] or 0),
+                'absent': int(record['absent_count'] or 0),
+                'attendance_data': attendance_data
+            })
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -258,7 +308,12 @@ class ClassDetailPage(QWidget):
         search_layout = QHBoxLayout()
         search_layout.setContentsMargins(0, 10, 0, 10)
         
-        search_label = QLabel("🔍 Search:")
+        search_icon = QLabel()
+        search_icon.setPixmap(QIcon("image/search.png").pixmap(20, 20))
+        search_icon.setStyleSheet("background: transparent;")
+        search_layout.addWidget(search_icon)
+        
+        search_label = QLabel("Search:")
         search_label.setStyleSheet("font-size: 14px; color: #555; font-weight: 600;")
         search_layout.addWidget(search_label)
         
@@ -367,9 +422,9 @@ class ClassDetailPage(QWidget):
         """Create detailed students table"""
         table = QTableWidget()
         table.setRowCount(len(students))
-        table.setColumnCount(7)
+        table.setColumnCount(6)
         table.setHorizontalHeaderLabels([
-            "Student ID", "Full Name", "Age", "Email", "Phone", "Grade", "Actions"
+            "Student ID", "Full Name", "Age", "Email", "Phone", "Actions"
         ])
         table.horizontalHeader().setStyleSheet("""
             QHeaderView::section {
@@ -407,9 +462,8 @@ class ClassDetailPage(QWidget):
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Age
         table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)  # Email
         table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Phone
-        table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Grade
-        table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)  # Actions
-        table.setColumnWidth(6, 100)
+        table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)  # Actions
+        table.setColumnWidth(5, 100)
         
         for row, student in enumerate(students):
             table.setItem(row, 0, QTableWidgetItem(student.get('student_id', '')))
@@ -421,11 +475,10 @@ class ClassDetailPage(QWidget):
             table.setItem(row, 2, QTableWidgetItem(str(student.get('age', ''))))
             table.setItem(row, 3, QTableWidgetItem(student.get('email', '')))
             table.setItem(row, 4, QTableWidgetItem(student.get('phone', '')))
-            table.setItem(row, 5, QTableWidgetItem(str(student.get('grade', ''))))
             
             # Action buttons widget
             actions_widget = self.create_action_buttons(student)
-            table.setCellWidget(row, 6, actions_widget)
+            table.setCellWidget(row, 5, actions_widget)
             table.setRowHeight(row, 50)
         
         return table
@@ -433,8 +486,9 @@ class ClassDetailPage(QWidget):
     def create_action_buttons(self, student):
         """Create edit and delete action buttons"""
         actions_widget = QWidget()
+        actions_widget.setStyleSheet("background-color: white;")
         actions_layout = QHBoxLayout(actions_widget)
-        actions_layout.setContentsMargins(5, 0, 5, 0)
+        actions_layout.setContentsMargins(10, 5, 10, 5)
         actions_layout.setSpacing(5)
         
         edit_btn = QPushButton()
@@ -446,9 +500,11 @@ class ClassDetailPage(QWidget):
             QPushButton {
                 background-color: #E6EFFA;
                 border-radius: 6px;
+                border: 1px solid #E6EFFA;
             }
             QPushButton:hover {
                 background-color: #C8B6FF;
+                border-color: #C8B6FF;
             }
         """)
         edit_btn.clicked.connect(lambda: self.edit_student(student))
@@ -462,9 +518,11 @@ class ClassDetailPage(QWidget):
             QPushButton {
                 background-color: #FFE6E6;
                 border-radius: 6px;
+                border: 1px solid #FFE6E6;
             }
             QPushButton:hover {
                 background-color: #FFCCCC;
+                border-color: #FFCCCC;
             }
         """)
         delete_btn.clicked.connect(lambda: self.delete_student(student))
@@ -486,7 +544,12 @@ class ClassDetailPage(QWidget):
         search_layout = QHBoxLayout()
         search_layout.setContentsMargins(0, 0, 0, 10)
         
-        search_label = QLabel("🔍 Search:")
+        search_icon = QLabel()
+        search_icon.setPixmap(QIcon("image/search.png").pixmap(20, 20))
+        search_icon.setStyleSheet("background: transparent;")
+        search_layout.addWidget(search_icon)
+        
+        search_label = QLabel("Search:")
         search_label.setStyleSheet("font-size: 14px; color: #555; font-weight: 600;")
         search_layout.addWidget(search_label)
         
@@ -542,6 +605,26 @@ class ClassDetailPage(QWidget):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
+        # Archived Attendance button
+        archived_btn = QPushButton("Archived Attendance")
+        archived_btn.setCursor(Qt.PointingHandCursor)
+        archived_btn.setFixedSize(180, 45)
+        archived_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6C757D;
+                color: white;
+                border: none;
+                border-radius: 22px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #5A6268;
+            }
+        """)
+        archived_btn.clicked.connect(self.show_archived_attendance)
+        button_layout.addWidget(archived_btn)
+        
         create_attendance_btn = QPushButton("Create Attendance")
         create_attendance_btn.setCursor(Qt.PointingHandCursor)
         create_attendance_btn.setFixedSize(180, 45)
@@ -573,8 +656,8 @@ class ClassDetailPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
         
-        # Use stored attendance records
-        attendance_data = self.attendance_records
+        # Use stored attendance records (exclude archived)
+        attendance_data = [record for record in self.attendance_records if not record.get('archived', False)]
         
         # Filter data based on search query
         if search_query and attendance_data:
@@ -642,41 +725,87 @@ class ClassDetailPage(QWidget):
             absent_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             table.setItem(row, 4, absent_item)
             
-            # View Attendance button
-            view_btn = QPushButton("View Attendance")
+            # Action buttons (Edit, Delete, View)
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background-color: white;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(10, 5, 10, 5)
+            action_layout.setSpacing(5)
+            action_layout.setAlignment(Qt.AlignCenter)
+            
+            # Edit button
+            edit_btn = QPushButton()
+            edit_btn.setIcon(QIcon("image/edit.png"))
+            edit_btn.setIconSize(QSize(16, 16))
+            edit_btn.setCursor(Qt.PointingHandCursor)
+            edit_btn.setFixedSize(35, 35)
+            edit_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #E6EFFA;
+                    border-radius: 6px;
+                    border: 1px solid #E6EFFA;
+                }
+                QPushButton:hover {
+                    background-color: #C8B6FF;
+                    border-color: #C8B6FF;
+                }
+            """)
+            edit_btn.clicked.connect(lambda checked, r=record: self.edit_attendance(r))
+            action_layout.addWidget(edit_btn)
+            
+            # Delete button
+            delete_btn = QPushButton()
+            delete_btn.setIcon(QIcon("image/bin.png"))
+            delete_btn.setIconSize(QSize(16, 16))
+            delete_btn.setCursor(Qt.PointingHandCursor)
+            delete_btn.setFixedSize(35, 35)
+            delete_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #FFE6E6;
+                    border-radius: 6px;
+                    border: 1px solid #FFE6E6;
+                }
+                QPushButton:hover {
+                    background-color: #FFCCCC;
+                    border-color: #FFCCCC;
+                }
+            """)
+            delete_btn.clicked.connect(lambda checked, r=record: self.delete_attendance(r))
+            action_layout.addWidget(delete_btn)
+            
+            # View button
+            view_btn = QPushButton("View")
             view_btn.setCursor(Qt.PointingHandCursor)
+            view_btn.setFixedSize(60, 35)
             view_btn.setStyleSheet("""
                 QPushButton {
-                    background-color: transparent;
+                    background-color: #007BFF;
                     color: white;
-                    border: 1px solid white;
-                    border-radius: 4px;
-                    padding: 6px 12px;
-                    font-size: 12px;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 6px 10px;
+                    font-size: 11px;
                     font-weight: 600;
                 }
                 QPushButton:hover {
-                    background-color: rgba(255, 255, 255, 0.2);
+                    background-color: #0056B3;
                 }
             """)
             view_btn.clicked.connect(lambda checked, r=record: self.view_attendance_details(r))
-            table.setCellWidget(row, 5, view_btn)
+            action_layout.addWidget(view_btn)
+            
+            table.setCellWidget(row, 5, action_widget)
         
-        # Adjust column widths
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
+        # Adjust column widths - make all columns equal and stretch to fill frame
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
         table.verticalHeader().setVisible(False)
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         
-        # Set minimum row height for better spacing
+        # Set minimum row height for better spacing and button visibility
         for row in range(table.rowCount()):
-            table.setRowHeight(row, 50)
+            table.setRowHeight(row, 65)
         
         self.attendance_table_container.layout().addWidget(table)
     
@@ -687,14 +816,151 @@ class ClassDetailPage(QWidget):
     
     def view_attendance_details(self, record):
         """View detailed attendance for a specific date"""
-        QMessageBox.information(
-            self, 
-            "Attendance Details", 
-            f"Viewing attendance for {record['day']}, {record['date']}\n\n"
-            f"Total: {record['total']}\n"
-            f"Present: {record['present']}\n"
-            f"Absent: {record['absent']}"
-        )
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Attendance Details - {record['date']}")
+        dialog.setMinimumSize(800, 600)
+        dialog.setStyleSheet("background-color: white;")
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
+        
+        # Header
+        header_layout = QHBoxLayout()
+        
+        title = QLabel(f"Attendance for {record['day']}, {record['date']}")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #222;")
+        header_layout.addWidget(title)
+        
+        header_layout.addStretch()
+        
+        # Summary
+        summary = QLabel(f"Total: {record['total']} | Present: {record['present']} | Absent: {record['absent']}")
+        summary.setStyleSheet("font-size: 14px; color: #555; font-weight: 600;")
+        header_layout.addWidget(summary)
+        
+        layout.addLayout(header_layout)
+        
+        # Get students data from record
+        attendance_data = record.get('attendance_data', {})
+        
+        if not attendance_data:
+            no_data = QLabel("No attendance data available")
+            no_data.setStyleSheet("font-size: 16px; color: #999; padding: 40px;")
+            no_data.setAlignment(Qt.AlignCenter)
+            layout.addWidget(no_data)
+            layout.addStretch()
+        else:
+            # Create table
+            table = QTableWidget()
+            table.setRowCount(len(attendance_data))
+            table.setColumnCount(3)
+            table.setHorizontalHeaderLabels(["Student ID", "Full Name", "Status"])
+            
+            table.horizontalHeader().setStyleSheet("""
+                QHeaderView::section {
+                    background-color: #5A5A5A;
+                    color: white;
+                    padding: 12px;
+                    border: none;
+                    font-weight: 600;
+                    font-size: 13px;
+                }
+            """)
+            
+            table.setStyleSheet("""
+                QTableWidget {
+                    border: 1px solid #DDD;
+                    border-radius: 8px;
+                    background-color: white;
+                    gridline-color: #DDD;
+                }
+                QTableWidget::item {
+                    padding: 10px;
+                    color: #333;
+                    font-size: 13px;
+                }
+            """)
+            
+            table.verticalHeader().setVisible(False)
+            table.setSelectionMode(QTableWidget.NoSelection)
+            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            
+            # Set column widths
+            table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+            table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+            table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+            table.setColumnWidth(0, 150)
+            table.setColumnWidth(2, 150)
+            
+            # Get all students for this section
+            students = list(self.db.get_students(self.section['section_id'], include_archived=False))
+            
+            row = 0
+            for student in students:
+                student_id = student.get('student_id', '')
+                
+                if student_id not in attendance_data:
+                    continue
+                    
+                # Student ID
+                id_item = QTableWidgetItem(student_id)
+                table.setItem(row, 0, id_item)
+                
+                # Full Name
+                full_name = f"{student.get('first_name', '')} {student.get('last_name', '')}".strip()
+                name_item = QTableWidgetItem(full_name)
+                table.setItem(row, 1, name_item)
+                
+                # Status
+                status = attendance_data[student_id].get('status', 'Not Marked')
+                status_item = QTableWidgetItem(status.upper() if status else 'NOT MARKED')
+                
+                # Color code status with background color
+                if status == 'present':
+                    status_item.setBackground(QColor("#D4EDDA"))  # Light green
+                    status_item.setForeground(QColor("#155724"))  # Dark green text
+                elif status == 'absent':
+                    status_item.setBackground(QColor("#F8D7DA"))  # Light red
+                    status_item.setForeground(QColor("#721C24"))  # Dark red text
+                else:
+                    status_item.setForeground(QColor("#999"))
+                    
+                status_item.setFont(QFont("Arial", 12, QFont.Bold))
+                table.setItem(row, 2, status_item)
+                
+                table.setRowHeight(row, 45)
+                row += 1
+            
+            table.setRowCount(row)  # Adjust to actual rows
+            layout.addWidget(table)
+        
+        # Close button
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        close_btn = QPushButton("Close")
+        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setFixedSize(120, 45)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6C757D;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #5A6268;
+            }
+        """)
+        close_btn.clicked.connect(dialog.close)
+        button_layout.addWidget(close_btn)
+        
+        layout.addLayout(button_layout)
+        
+        dialog.exec_()
     
     def create_attendance(self):
         """Create new attendance record"""
@@ -799,7 +1065,7 @@ class ClassDetailPage(QWidget):
                 # Present button
                 present_widget = QWidget()
                 present_layout = QHBoxLayout(present_widget)
-                present_layout.setContentsMargins(2, 2, 2, 2)
+                present_layout.setContentsMargins(0, 0, 0, 0)
                 present_layout.setAlignment(Qt.AlignCenter)
                 
                 present_btn = QPushButton("Present")
@@ -831,7 +1097,7 @@ class ClassDetailPage(QWidget):
                 # Absent button
                 absent_widget = QWidget()
                 absent_layout = QHBoxLayout(absent_widget)
-                absent_layout.setContentsMargins(2, 2, 2, 2)
+                absent_layout.setContentsMargins(0, 0, 0, 0)
                 absent_layout.setAlignment(Qt.AlignCenter)
                 
                 absent_btn = QPushButton("Absent")
@@ -860,7 +1126,7 @@ class ClassDetailPage(QWidget):
                 absent_layout.addWidget(absent_btn)
                 table.setCellWidget(row, 3, absent_widget)
                 
-                table.setRowHeight(row, 60)
+                table.setRowHeight(row, 65)
                 
                 # Store button references
                 self.attendance_data[student_id] = {
@@ -948,41 +1214,1065 @@ class ClassDetailPage(QWidget):
         present_count = sum(1 for data in self.attendance_data.values() if data['status'] == 'present')
         absent_count = sum(1 for data in self.attendance_data.values() if data['status'] == 'absent')
         
-        # Create attendance record
-        attendance_record = {
-            'date': date.strftime('%B %d, %Y'),
-            'day': date.strftime('%A'),
-            'total': len(self.attendance_data),
-            'present': present_count,
-            'absent': absent_count,
-            'attendance_data': dict(self.attendance_data)  # Store full attendance data
-        }
+        # Save to database
+        attendance_date = date.strftime('%Y-%m-%d')
+        success = self.db.save_attendance(
+            self.section['section_id'],
+            attendance_date,
+            self.attendance_data
+        )
         
-        # Add to records list
-        self.attendance_records.insert(0, attendance_record)  # Insert at beginning (newest first)
+        if success:
+            QMessageBox.information(
+                dialog, 
+                "Attendance Saved", 
+                f"Attendance for {date.strftime('%B %d, %Y')} has been saved!\n"
+                f"Present: {present_count} | Absent: {absent_count}"
+            )
+            dialog.accept()
+            
+            # Reload attendance records from database
+            self.load_attendance_from_database()
+            # Refresh the attendance table
+            self.create_attendance_table()
+        else:
+            QMessageBox.critical(
+                dialog,
+                "Error",
+                "Failed to save attendance to database!"
+            )
+    
+    def edit_attendance(self, record):
+        """Edit an existing attendance record"""
+        from datetime import datetime
         
-        # TODO: Save to database
-        # For now, just show confirmation
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Edit Attendance - {record['date']}")
+        dialog.setMinimumSize(900, 600)
+        dialog.setStyleSheet("background-color: white;")
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
+        
+        # Header with date
+        header_layout = QHBoxLayout()
+        
+        title = QLabel("Edit Attendance")
+        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #222;")
+        header_layout.addWidget(title)
+        
+        header_layout.addStretch()
+        
+        # Show the date being edited
+        date_label = QLabel(record['date'] + " - " + record['day'])
+        date_label.setStyleSheet("font-size: 18px; color: #555; font-weight: 600;")
+        header_layout.addWidget(date_label)
+        
+        layout.addLayout(header_layout)
+        
+        # Get students for this section
+        students = list(self.db.get_students(self.section['section_id'], include_archived=False))
+        
+        if not students:
+            no_students = QLabel("No students in this section")
+            no_students.setStyleSheet("font-size: 16px; color: #999; padding: 40px;")
+            no_students.setAlignment(Qt.AlignCenter)
+            layout.addWidget(no_students)
+        else:
+            # Attendance table
+            table = QTableWidget()
+            table.setRowCount(len(students))
+            table.setColumnCount(4)
+            table.setHorizontalHeaderLabels(["Student Id", "Full Name", "Present", "Absent"])
+            
+            table.horizontalHeader().setStyleSheet("""
+                QHeaderView::section {
+                    background-color: #5A5A5A;
+                    color: white;
+                    padding: 12px;
+                    border: none;
+                    font-weight: 600;
+                    font-size: 13px;
+                }
+            """)
+            
+            table.setStyleSheet("""
+                QTableWidget {
+                    border: 1px solid #DDD;
+                    border-radius: 8px;
+                    background-color: white;
+                    gridline-color: #DDD;
+                }
+                QTableWidget::item {
+                    padding: 10px;
+                    color: #333;
+                    background-color: white;
+                    font-size: 13px;
+                }
+            """)
+            
+            table.verticalHeader().setVisible(False)
+            table.setSelectionMode(QTableWidget.NoSelection)
+            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            
+            # Set column widths
+            table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+            table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+            table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
+            table.setColumnWidth(2, 140)
+            table.setColumnWidth(3, 140)
+            
+            # Store attendance data
+            self.attendance_data = {}
+            existing_data = record.get('attendance_data', {})
+            
+            for row, student in enumerate(students):
+                student_id = student.get('student_id', '')
+                
+                # Student ID
+                id_item = QTableWidgetItem(student_id)
+                id_item.setForeground(QColor("white"))
+                table.setItem(row, 0, id_item)
+                
+                # Full Name
+                full_name = f"{student.get('first_name', '')} {student.get('last_name', '')}".strip()
+                name_item = QTableWidgetItem(full_name)
+                name_item.setForeground(QColor("white"))
+                table.setItem(row, 1, name_item)
+                
+                # Present button
+                present_widget = QWidget()
+                present_layout = QHBoxLayout(present_widget)
+                present_layout.setContentsMargins(0, 0, 0, 0)
+                present_layout.setAlignment(Qt.AlignCenter)
+                
+                present_btn = QPushButton("Present")
+                present_btn.setCursor(Qt.PointingHandCursor)
+                present_btn.setFixedSize(100, 35)
+                present_btn.setProperty("student_id", student_id)
+                present_btn.setProperty("status", "present")
+                
+                # Check if already marked
+                existing_status = existing_data.get(student_id, {}).get('status')
+                if existing_status == 'present':
+                    present_btn.setProperty("selected", "true")
+                else:
+                    present_btn.setProperty("selected", "false")
+                
+                present_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #6C757D;
+                        color: white;
+                        border: 2px solid #6C757D;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        font-size: 12px;
+                    }
+                    QPushButton:hover {
+                        background-color: #5A6268;
+                    }
+                    QPushButton[selected="true"] {
+                        background-color: #28A745;
+                        border-color: #28A745;
+                    }
+                """)
+                present_btn.clicked.connect(lambda checked, sid=student_id, btn=present_btn: self.mark_attendance(sid, "present", btn))
+                present_layout.addWidget(present_btn)
+                table.setCellWidget(row, 2, present_widget)
+                
+                # Absent button
+                absent_widget = QWidget()
+                absent_layout = QHBoxLayout(absent_widget)
+                absent_layout.setContentsMargins(0, 0, 0, 0)
+                absent_layout.setAlignment(Qt.AlignCenter)
+                
+                absent_btn = QPushButton("Absent")
+                absent_btn.setCursor(Qt.PointingHandCursor)
+                absent_btn.setFixedSize(100, 35)
+                absent_btn.setProperty("student_id", student_id)
+                absent_btn.setProperty("status", "absent")
+                
+                # Check if already marked
+                if existing_status == 'absent':
+                    absent_btn.setProperty("selected", "true")
+                else:
+                    absent_btn.setProperty("selected", "false")
+                
+                absent_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #6C757D;
+                        color: white;
+                        border: 2px solid #6C757D;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        font-size: 12px;
+                    }
+                    QPushButton:hover {
+                        background-color: #5A6268;
+                    }
+                    QPushButton[selected="true"] {
+                        background-color: #DC3545;
+                        border-color: #DC3545;
+                    }
+                """)
+                absent_btn.clicked.connect(lambda checked, sid=student_id, btn=absent_btn: self.mark_attendance(sid, "absent", btn))
+                absent_layout.addWidget(absent_btn)
+                table.setCellWidget(row, 3, absent_widget)
+                
+                table.setRowHeight(row, 60)
+                
+                # Store button references with existing status
+                self.attendance_data[student_id] = {
+                    'present_btn': present_btn,
+                    'absent_btn': absent_btn,
+                    'status': existing_status
+                }
+            
+            layout.addWidget(table)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedSize(120, 45)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #E0E0E0;
+                color: #333;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #D0D0D0;
+            }
+        """)
+        cancel_btn.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        save_btn = QPushButton("Update Attendance")
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFixedSize(180, 45)
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007BFF;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #0056B3;
+            }
+        """)
+        save_btn.clicked.connect(lambda: self.update_attendance_record(dialog, record))
+        button_layout.addWidget(save_btn)
+        
+        layout.addLayout(button_layout)
+        
+        dialog.exec_()
+    
+    def update_attendance_record(self, dialog, record):
+        """Update existing attendance record"""
+        # Count marked students
+        marked_count = sum(1 for data in self.attendance_data.values() if data['status'] is not None)
+        
+        if marked_count == 0:
+            QMessageBox.warning(dialog, "No Attendance Marked", "Please mark attendance for at least one student!")
+            return
+        
+        # Count present and absent
+        present_count = sum(1 for data in self.attendance_data.values() if data['status'] == 'present')
+        absent_count = sum(1 for data in self.attendance_data.values() if data['status'] == 'absent')
+        
+        # Update the record in the list
+        for i, rec in enumerate(self.attendance_records):
+            if rec['date'] == record['date']:
+                self.attendance_records[i] = {
+                    'date': record['date'],
+                    'day': record['day'],
+                    'total': len(self.attendance_data),
+                    'present': present_count,
+                    'absent': absent_count,
+                    'attendance_data': dict(self.attendance_data)
+                }
+                break
+        
         QMessageBox.information(
-            dialog, 
-            "Attendance Saved", 
-            f"Attendance for {date.strftime('%B %d, %Y')} has been saved!\n"
+            dialog,
+            "Attendance Updated",
+            f"Attendance for {record['date']} has been updated!\n"
             f"Present: {present_count} | Absent: {absent_count}"
         )
         dialog.accept()
         
-        # Refresh only the attendance table
+        # Refresh the attendance table
         self.create_attendance_table()
+    
+    def delete_attendance(self, record):
+        """Delete an attendance record with archive option"""
+        # Create custom dialog with archive option
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Question)
+        msg_box.setWindowTitle("Delete Attendance")
+        msg_box.setText(f"What would you like to do with attendance for {record['date']}?")
+        
+        # Add custom buttons
+        archive_btn = msg_box.addButton("Archive", QMessageBox.ActionRole)
+        delete_btn = msg_box.addButton("Delete Permanently", QMessageBox.DestructiveRole)
+        cancel_btn = msg_box.addButton("Cancel", QMessageBox.RejectRole)
+        
+        msg_box.exec_()
+        
+        clicked_btn = msg_box.clickedButton()
+        
+        if clicked_btn == archive_btn:
+            # Archive the attendance
+            record['archived'] = True
+            QMessageBox.information(
+                self,
+                "Archived",
+                f"Attendance for {record['date']} has been archived!"
+            )
+            # Refresh the attendance table
+            self.create_attendance_table()
+            
+        elif clicked_btn == delete_btn:
+            # Confirm permanent deletion
+            confirm = QMessageBox.question(
+                self,
+                "Confirm Deletion",
+                f"Are you sure you want to permanently delete attendance for {record['date']}?\n\nThis action cannot be undone!",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if confirm == QMessageBox.Yes:
+                # Remove from list
+                self.attendance_records = [r for r in self.attendance_records if r['date'] != record['date']]
+                
+                QMessageBox.information(
+                    self,
+                    "Deleted",
+                    f"Attendance for {record['date']} has been permanently deleted!"
+                )
+                # Refresh the attendance table
+                self.create_attendance_table()
+    
+    def show_archived_attendance(self):
+        """Show archived attendance records"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Archived Attendance - {self.section['section_name']}")
+        dialog.resize(1200, 700)
+        dialog.setStyleSheet("background-color: #E7E7DF;")
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(20)
+        
+        # Header
+        archived_records = [record for record in self.attendance_records if record.get('archived', False)]
+        header = QLabel(f"📦 Archived Attendance - {self.section['section_name']}")
+        header.setStyleSheet("font-size: 24px; font-weight: 700; color: #222;")
+        layout.addWidget(header)
+        
+        if not archived_records:
+            no_archive = QLabel("No archived attendance records in this section")
+            no_archive.setStyleSheet("font-size: 16px; color: #999;")
+            layout.addWidget(no_archive)
+            layout.addStretch()
+        else:
+            # Create table
+            table = QTableWidget()
+            table.setRowCount(len(archived_records))
+            table.setColumnCount(7)
+            table.setHorizontalHeaderLabels(["Date", "Day", "Total", "Present", "Absent", "View", "Restore"])
+            
+            table.horizontalHeader().setStyleSheet("""
+                QHeaderView::section {
+                    background-color: #F5F5F5;
+                    color: #333;
+                    font-weight: 600;
+                    padding: 10px;
+                    border: none;
+                    font-size: 13px;
+                }
+            """)
+            
+            table.setStyleSheet("""
+                QTableWidget {
+                    border: 1px solid #E0E0E0;
+                    border-radius: 8px;
+                    background-color: white;
+                    gridline-color: #E0E0E0;
+                }
+                QTableWidget::item {
+                    padding: 12px;
+                    color: #333;
+                    font-size: 13px;
+                    border-bottom: 1px solid #E0E0E0;
+                }
+            """)
+            
+            table.verticalHeader().setVisible(False)
+            table.setSelectionMode(QTableWidget.NoSelection)
+            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            
+            # Set column widths
+            table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+            table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+            table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+            table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+            table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+            table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)
+            table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
+            table.setColumnWidth(5, 80)
+            table.setColumnWidth(6, 80)
+            
+            for row, record in enumerate(archived_records):
+                # Date
+                date_item = QTableWidgetItem(record['date'])
+                date_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                table.setItem(row, 0, date_item)
+                
+                # Day
+                day_item = QTableWidgetItem(record['day'])
+                day_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                table.setItem(row, 1, day_item)
+                
+                # Total
+                total_item = QTableWidgetItem(f"Total: {record['total']}")
+                total_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                table.setItem(row, 2, total_item)
+                
+                # Present
+                present_item = QTableWidgetItem(f"Present: {record['present']}")
+                present_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                table.setItem(row, 3, present_item)
+                
+                # Absent
+                absent_item = QTableWidgetItem(f"Absent: {record['absent']}")
+                absent_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                table.setItem(row, 4, absent_item)
+                
+                # View button
+                view_widget = QWidget()
+                view_widget.setStyleSheet("background-color: white;")
+                view_layout = QHBoxLayout(view_widget)
+                view_layout.setContentsMargins(5, 5, 5, 5)
+                view_layout.setAlignment(Qt.AlignCenter)
+                
+                view_btn = QPushButton("View")
+                view_btn.setCursor(Qt.PointingHandCursor)
+                view_btn.setFixedSize(70, 35)
+                view_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #007BFF;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        font-weight: 600;
+                    }
+                    QPushButton:hover {
+                        background-color: #0056B3;
+                    }
+                """)
+                view_btn.clicked.connect(lambda checked, r=record: self.view_attendance_details(r))
+                view_layout.addWidget(view_btn)
+                table.setCellWidget(row, 5, view_widget)
+                
+                # Restore button
+                restore_widget = QWidget()
+                restore_widget.setStyleSheet("background-color: white;")
+                restore_layout = QHBoxLayout(restore_widget)
+                restore_layout.setContentsMargins(5, 5, 5, 5)
+                restore_layout.setAlignment(Qt.AlignCenter)
+                
+                restore_btn = QPushButton("Restore")
+                restore_btn.setCursor(Qt.PointingHandCursor)
+                restore_btn.setFixedSize(70, 35)
+                restore_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #28A745;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        font-weight: 600;
+                    }
+                    QPushButton:hover {
+                        background-color: #218838;
+                    }
+                """)
+                restore_btn.clicked.connect(lambda checked, r=record, d=dialog: self.restore_attendance(r, d))
+                restore_layout.addWidget(restore_btn)
+                table.setCellWidget(row, 6, restore_widget)
+                
+                table.setRowHeight(row, 55)
+            
+            layout.addWidget(table)
+        
+        # Close button
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        close_btn = QPushButton("Close")
+        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setFixedSize(120, 45)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6C757D;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #5A6268;
+            }
+        """)
+        close_btn.clicked.connect(dialog.close)
+        button_layout.addWidget(close_btn)
+        
+        layout.addLayout(button_layout)
+        
+        dialog.exec_()
+    
+    def restore_attendance(self, record, dialog):
+        """Restore archived attendance record"""
+        reply = QMessageBox.question(
+            dialog,
+            "Restore Attendance",
+            f"Are you sure you want to restore attendance for {record['date']}?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Unarchive the record
+            record['archived'] = False
+            
+            QMessageBox.information(
+                dialog,
+                "Restored",
+                f"Attendance for {record['date']} has been restored!"
+            )
+            
+            # Close and refresh
+            dialog.close()
+            self.create_attendance_table()
+            # Reopen archived dialog to show updated list
+            self.show_archived_attendance()
 
     def load_grades_view(self):
         """Load grades view"""
         self.clear_content_layout()
         QApplication.processEvents()  # Ensure widgets are cleared
         
-        placeholder = QLabel("Grades view coming soon...")
-        placeholder.setStyleSheet("font-size: 18px; color: #555; padding: 40px;")
-        placeholder.setAlignment(Qt.AlignCenter)
-        self.content_layout.addWidget(placeholder)
+        # Search bar
+        search_layout = QHBoxLayout()
+        search_layout.setContentsMargins(0, 0, 0, 10)
+        
+        search_icon = QLabel()
+        search_icon.setPixmap(QIcon("image/search.png").pixmap(20, 20))
+        search_icon.setStyleSheet("background: transparent;")
+        search_layout.addWidget(search_icon)
+        
+        search_label = QLabel("Search:")
+        search_label.setStyleSheet("font-size: 14px; color: #555; font-weight: 600;")
+        search_layout.addWidget(search_label)
+        
+        self.grades_search_input = QLineEdit()
+        self.grades_search_input.setPlaceholderText("Search by Student ID or Name...")
+        self.grades_search_input.setFixedHeight(40)
+        self.grades_search_input.setStyleSheet("""
+            QLineEdit {
+                background-color: white;
+                border: 2px solid #DDD;
+                border-radius: 8px;
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #808080;
+            }
+        """)
+        self.grades_search_input.textChanged.connect(self.filter_grades)
+        search_layout.addWidget(self.grades_search_input)
+        
+        # Clear search button
+        clear_btn = QPushButton("✕ Clear")
+        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.setFixedHeight(40)
+        clear_btn.setFixedWidth(100)
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #E0E0E0;
+                color: #333;
+                border: none;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #D0D0D0;
+            }
+        """)
+        clear_btn.clicked.connect(lambda: self.grades_search_input.clear())
+        search_layout.addWidget(clear_btn)
+        
+        self.content_layout.addLayout(search_layout)
+        
+        # Container for table
+        self.grades_table_container = QWidget()
+        table_layout = QVBoxLayout(self.grades_table_container)
+        table_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create grades table
+        self.create_grades_table()
+        
+        self.content_layout.addWidget(self.grades_table_container)
+    
+    def create_grades_table(self, search_query=""):
+        """Create the grades table with editable cells"""
+        # Clear current table
+        while self.grades_table_container.layout().count():
+            item = self.grades_table_container.layout().takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Get students for this section
+        all_students = list(self.db.get_students(self.section['section_id'], include_archived=False))
+        
+        # Filter students based on search query
+        if search_query:
+            search_lower = search_query.lower()
+            students = [
+                s for s in all_students
+                if search_lower in s.get('student_id', '').lower()
+                or search_lower in f"{s.get('first_name', '')} {s.get('last_name', '')}".lower()
+            ]
+        else:
+            students = all_students
+        
+        if not students:
+            no_students = QLabel("No students in this section")
+            no_students.setStyleSheet("font-size: 16px; color: #999; padding: 40px;")
+            no_students.setAlignment(Qt.AlignCenter)
+            self.grades_table_container.layout().addWidget(no_students)
+            return
+        
+        # Create table
+        table = QTableWidget()
+        table.setRowCount(len(students))
+        table.setColumnCount(7)
+        table.setHorizontalHeaderLabels(["Student ID", "Student Name", "Midterm Grade", "Final Grade", "Semestral Grade", "Remarks", "Action"])
+        
+        # Header styling to match student table
+        table.horizontalHeader().setStyleSheet("""
+            QHeaderView::section {
+                background-color: #808080;
+                color: white;
+                padding: 12px;
+                border: none;
+                font-weight: 600;
+                font-size: 13px;
+            }
+        """)
+        
+        # Table styling to match student table
+        table.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #E0E0E0;
+                border-radius: 10px;
+                background-color: white;
+                gridline-color: #F0F0F0;
+            }
+            QTableWidget::item {
+                padding: 10px;
+            }
+            QTableWidget::item:selected {
+                background-color: #E6EFFA;
+            }
+        """)
+        
+        table.verticalHeader().setVisible(False)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        
+        # Set column widths
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Student ID
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # Student Name
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)  # Midterm
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)  # Final
+        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Fixed)  # Semestral
+        table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)  # Remarks
+        table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)  # Action
+        table.setColumnWidth(2, 150)
+        table.setColumnWidth(3, 150)
+        table.setColumnWidth(4, 150)
+        table.setColumnWidth(6, 100)
+        
+        # Store grade inputs for calculation
+        self.grade_inputs = {}
+        
+        for row, student in enumerate(students):
+            student_id = student.get('student_id', '')
+            
+            # Get grades for this student
+            grades = self.db.get_student_grades(student_id, self.section['section_id']) if hasattr(self.db, 'get_student_grades') else {}
+            
+            midterm = grades.get('midterm', 0.0) if grades else 0.0
+            final = grades.get('final', 0.0) if grades else 0.0
+            
+            # Student ID
+            id_item = QTableWidgetItem(student_id)
+            id_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            table.setItem(row, 0, id_item)
+            
+            # Student Name
+            full_name = f"{student.get('first_name', '')} {student.get('last_name', '')}".strip()
+            name_item = QTableWidgetItem(full_name)
+            name_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            table.setItem(row, 1, name_item)
+            
+            # Midterm Grade - Editable cell
+            midterm_widget = QWidget()
+            midterm_widget.setStyleSheet("background-color: white;")
+            midterm_layout = QHBoxLayout(midterm_widget)
+            midterm_layout.setContentsMargins(0, 0, 0, 0)
+            midterm_layout.setAlignment(Qt.AlignCenter)
+            
+            midterm_input = GradeLineEdit(self, "Midterm Grade")
+            midterm_input.setPlaceholderText("0.00")
+            midterm_input.setText(f"{midterm:.2f}" if midterm else "")
+            midterm_input.setAlignment(Qt.AlignCenter)
+            midterm_input.setStyleSheet("""
+                QLineEdit {
+                    border: 1px solid #DDD;
+                    border-radius: 5px;
+                    padding: 8px;
+                    font-size: 16px;
+                    background-color: white;
+                }
+                QLineEdit:focus {
+                    border: 2px solid #808080;
+                }
+            """)
+            # Add validator for numeric input with max 2 decimal places
+            from PyQt5.QtGui import QRegExpValidator
+            from PyQt5.QtCore import QRegExp
+            midterm_validator = QRegExpValidator(QRegExp(r"^\d*\.?\d{0,2}$"))
+            midterm_input.setValidator(midterm_validator)
+            midterm_input.textChanged.connect(lambda text, r=row, sid=student_id: self.calculate_semestral(r, sid))
+            midterm_layout.addWidget(midterm_input)
+            table.setCellWidget(row, 2, midterm_widget)
+            
+            # Final Grade - Editable cell
+            final_widget = QWidget()
+            final_widget.setStyleSheet("background-color: white;")
+            final_layout = QHBoxLayout(final_widget)
+            final_layout.setContentsMargins(0, 0, 0, 0)
+            final_layout.setAlignment(Qt.AlignCenter)
+            
+            final_input = GradeLineEdit(self, "Final Grade")
+            final_input.setPlaceholderText("0.00")
+            final_input.setText(f"{final:.2f}" if final else "")
+            final_input.setAlignment(Qt.AlignCenter)
+            final_input.setStyleSheet("""
+                QLineEdit {
+                    border: 1px solid #DDD;
+                    border-radius: 5px;
+                    padding: 8px;
+                    font-size: 16px;
+                    background-color: white;
+                }
+                QLineEdit:focus {
+                    border: 2px solid #808080;
+                }
+            """)
+            # Add validator for numeric input with max 2 decimal places
+            final_validator = QRegExpValidator(QRegExp(r"^\d*\.?\d{0,2}$"))
+            final_input.setValidator(final_validator)
+            final_input.textChanged.connect(lambda text, r=row, sid=student_id: self.calculate_semestral(r, sid))
+            final_layout.addWidget(final_input)
+            table.setCellWidget(row, 3, final_widget)
+            
+            # Calculate semestral grade
+            semestral = round((midterm + final) / 2, 2) if midterm or final else 0.0
+            
+            # Semestral Grade - Display only (auto-calculated)
+            semestral_item = QTableWidgetItem(f"{semestral:.2f}" if (midterm or final) else "")
+            semestral_item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            
+            # Color code based on grade performance
+            if semestral > 0:
+                if semestral <= 1.75:
+                    semestral_item.setForeground(QColor("#27AE60"))  # Green for Excellent/Very Satisfactory
+                elif semestral <= 2.50:
+                    semestral_item.setForeground(QColor("#3498DB"))  # Blue for Satisfactory
+                elif semestral <= 3.00:
+                    semestral_item.setForeground(QColor("#F39C12"))  # Orange for Fairly Satisfactory/Passed
+                elif semestral <= 5.00:
+                    semestral_item.setForeground(QColor("#E74C3C"))  # Red for Conditional Failure/Failed
+                else:
+                    semestral_item.setForeground(QColor("#95A5A6"))  # Gray for invalid
+                
+                # Add tooltip with interpretation
+                semestral_item.setToolTip(self.get_grade_interpretation(semestral))
+            else:
+                semestral_item.setForeground(QColor("#95A5A6"))
+            
+            semestral_item.setFont(QFont("Arial", 11, QFont.Bold))
+            semestral_item.setFlags(semestral_item.flags() & ~Qt.ItemIsEditable)
+            table.setItem(row, 4, semestral_item)
+            
+            # Remarks - Display grade interpretation
+            remarks_text = ""
+            if semestral > 0:
+                if semestral >= 1.00 and semestral <= 1.25:
+                    remarks_text = "Excellent"
+                elif semestral > 1.25 and semestral <= 1.75:
+                    remarks_text = "Very Satisfactory"
+                elif semestral > 1.75 and semestral <= 2.50:
+                    remarks_text = "Satisfactory"
+                elif semestral > 2.50 and semestral <= 3.00:
+                    remarks_text = "Fairly Satisfactory"
+                elif semestral >= 3.00 and semestral < 4.00:
+                    remarks_text = "Passed"
+                elif semestral >= 4.00 and semestral <= 5.00:
+                    remarks_text = "Conditional Failure"
+                elif semestral > 5.00:
+                    remarks_text = "Failed"
+                else:
+                    remarks_text = "No Remarks"
+            else:
+                remarks_text = "No Remarks"
+            
+            remarks_item = QTableWidgetItem(remarks_text)
+            remarks_item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            remarks_item.setFont(QFont("Arial", 10, QFont.Bold))
+            remarks_item.setFlags(remarks_item.flags() & ~Qt.ItemIsEditable)
+            
+            # Color code remarks
+            if remarks_text in ["Excellent", "Very Satisfactory"]:
+                remarks_item.setForeground(QColor("#27AE60"))
+            elif remarks_text == "Satisfactory":
+                remarks_item.setForeground(QColor("#3498DB"))
+            elif remarks_text in ["Fairly Satisfactory", "Passed"]:
+                remarks_item.setForeground(QColor("#F39C12"))
+            elif remarks_text in ["Conditional Failure", "Failed"]:
+                remarks_item.setForeground(QColor("#E74C3C"))
+            else:
+                remarks_item.setForeground(QColor("#95A5A6"))  # Gray for "No Remarks"
+            
+            table.setItem(row, 5, remarks_item)
+            
+            # Store inputs for later access
+            self.grade_inputs[student_id] = {
+                'row': row,
+                'midterm_input': midterm_input,
+                'final_input': final_input,
+                'table': table
+            }
+            
+            # Action button (Delete)
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background-color: white;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(10, 5, 10, 5)
+            action_layout.setAlignment(Qt.AlignCenter)
+            
+            # Delete button
+            delete_btn = QPushButton()
+            delete_btn.setIcon(QIcon("image/bin.png"))
+            delete_btn.setIconSize(QSize(18, 18))
+            delete_btn.setCursor(Qt.PointingHandCursor)
+            delete_btn.setFixedSize(35, 35)
+            delete_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #FFE6E6;
+                    border-radius: 6px;
+                    border: 1px solid #FFE6E6;
+                }
+                QPushButton:hover {
+                    background-color: #FFCCCC;
+                    border-color: #FFCCCC;
+                }
+            """)
+            delete_btn.clicked.connect(lambda checked, s=student: self.delete_grade(s))
+            action_layout.addWidget(delete_btn)
+            
+            table.setCellWidget(row, 6, action_widget)
+            table.setRowHeight(row, 60)
+        
+        self.grades_table_container.layout().addWidget(table)
+    
+    def calculate_semestral(self, row, student_id):
+        """Calculate and update semestral grade when midterm or final changes"""
+        if student_id not in self.grade_inputs:
+            return
+        
+        grade_data = self.grade_inputs[student_id]
+        table = grade_data['table']
+        
+        try:
+            # Get midterm and final values
+            midterm_text = grade_data['midterm_input'].text().strip()
+            final_text = grade_data['final_input'].text().strip()
+            
+            midterm = float(midterm_text) if midterm_text else 0.0
+            final = float(final_text) if final_text else 0.0
+            
+            # Save grades to database in real-time
+            if hasattr(self.db, 'save_student_grades'):
+                self.db.save_student_grades(
+                    student_id,
+                    self.section['section_id'],
+                    midterm,
+                    final
+                )
+            
+            # Emit signal to update dashboard
+            self.grades_updated.emit()
+            
+            # Update semestral cell
+            semestral_item = table.item(row, 4)
+            remarks_item = table.item(row, 5)
+            
+            if semestral_item:
+                # Only show semestral if at least one grade is entered
+                if midterm_text or final_text:
+                    semestral = round((midterm + final) / 2, 2)
+                    semestral_item.setText(f"{semestral:.2f}")
+                    
+                    # Color code based on grade performance
+                    if semestral <= 1.75:
+                        semestral_item.setForeground(QColor("#27AE60"))  # Green for Excellent/Very Satisfactory
+                    elif semestral <= 2.50:
+                        semestral_item.setForeground(QColor("#3498DB"))  # Blue for Satisfactory
+                    elif semestral <= 3.00:
+                        semestral_item.setForeground(QColor("#F39C12"))  # Orange for Fairly Satisfactory/Passed
+                    elif semestral <= 5.00:
+                        semestral_item.setForeground(QColor("#E74C3C"))  # Red for Conditional Failure/Failed
+                    else:
+                        semestral_item.setForeground(QColor("#95A5A6"))  # Gray for invalid
+                    
+                    # Add grade interpretation as tooltip
+                    interpretation = self.get_grade_interpretation(semestral)
+                    semestral_item.setToolTip(interpretation)
+                    
+                    # Update remarks column
+                    if remarks_item:
+                        remarks_text = ""
+                        if semestral >= 1.00 and semestral <= 1.25:
+                            remarks_text = "Excellent"
+                        elif semestral > 1.25 and semestral <= 1.75:
+                            remarks_text = "Very Satisfactory"
+                        elif semestral > 1.75 and semestral <= 2.50:
+                            remarks_text = "Satisfactory"
+                        elif semestral > 2.50 and semestral <= 3.00:
+                            remarks_text = "Fairly Satisfactory"
+                        elif semestral >= 3.00 and semestral < 4.00:
+                            remarks_text = "Passed"
+                        elif semestral >= 4.00 and semestral <= 5.00:
+                            remarks_text = "Conditional Failure"
+                        elif semestral > 5.00:
+                            remarks_text = "Failed"
+                        
+                        remarks_item.setText(remarks_text)
+                        
+                        # Color code remarks
+                        if remarks_text in ["Excellent", "Very Satisfactory"]:
+                            remarks_item.setForeground(QColor("#27AE60"))
+                        elif remarks_text == "Satisfactory":
+                            remarks_item.setForeground(QColor("#3498DB"))
+                        elif remarks_text in ["Fairly Satisfactory", "Passed"]:
+                            remarks_item.setForeground(QColor("#F39C12"))
+                        elif remarks_text in ["Conditional Failure", "Failed"]:
+                            remarks_item.setForeground(QColor("#E74C3C"))
+                else:
+                    semestral_item.setText("")
+                    semestral_item.setToolTip("")
+                    semestral_item.setForeground(QColor("#95A5A6"))
+                    
+                    # Show "No Remarks" when grades are cleared
+                    if remarks_item:
+                        remarks_item.setText("No Remarks")
+                        remarks_item.setForeground(QColor("#95A5A6"))
+        except ValueError:
+            # Invalid input, keep current value
+            pass
+    
+    def get_grade_interpretation(self, grade):
+        """Get grade interpretation based on the grading system"""
+        if grade >= 1.00 and grade <= 1.25:
+            return "Excellent (1.00-1.25)"
+        elif grade > 1.25 and grade <= 1.50:
+            return "Excellent (1.25-1.50)"
+        elif grade > 1.50 and grade <= 1.75:
+            return "Very Satisfactory (1.50-1.75)"
+        elif grade > 1.75 and grade <= 2.00:
+            return "Very Satisfactory (1.75-2.00)"
+        elif grade > 2.00 and grade <= 2.25:
+            return "Satisfactory (2.00-2.25)"
+        elif grade > 2.25 and grade <= 2.50:
+            return "Satisfactory (2.25-2.50)"
+        elif grade > 2.50 and grade <= 2.75:
+            return "Fairly Satisfactory (2.50-2.75)"
+        elif grade > 2.75 and grade <= 3.00:
+            return "Fairly Satisfactory (2.75-3.00)"
+        elif grade >= 3.00 and grade <= 4.00:
+            return "Passed (3.00-4.00)"
+        elif grade > 4.00 and grade <= 5.00:
+            return "Conditional Failure (4.0-5.0)"
+        elif grade > 5.00:
+            return "Failed (5.0 and below)"
+        elif grade == 0:
+            return "Inc - Incomplete / Drp - Officially Dropped"
+        else:
+            return "Invalid Grade"
+    
+    def delete_grade(self, student):
+        """Delete/reset student grades"""
+        student_name = f"{student.get('first_name', '')} {student.get('last_name', '')}"
+        reply = QMessageBox.question(
+            self,
+            "Reset Grades",
+            f"Are you sure you want to reset all grades for '{student_name}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            student_id = student.get('student_id')
+            
+            # Reset the input fields
+            if student_id in self.grade_inputs:
+                self.grade_inputs[student_id]['midterm_input'].clear()
+                self.grade_inputs[student_id]['final_input'].clear()
+            
+            # Delete grades from database if method exists
+            if hasattr(self.db, 'delete_student_grades'):
+                success = self.db.delete_student_grades(student_id, self.section['section_id'])
+                if success:
+                    QMessageBox.information(self, "Success", f"Grades reset for {student_name}")
+                else:
+                    QMessageBox.critical(self, "Error", "Failed to reset grades")
+            else:
+                QMessageBox.information(self, "Success", f"Grades reset for {student_name}")
+    
+    def filter_grades(self):
+        """Filter grades table based on search input"""
+        search_query = self.grades_search_input.text().strip() if hasattr(self, 'grades_search_input') else ""
+        self.create_grades_table(search_query)
 
     def load_customize_view(self):
         """Load customize view with editable class fields"""
@@ -1184,10 +2474,16 @@ class ClassDetailPage(QWidget):
                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         
         if reply == QMessageBox.Yes:
-            success, message = self.db.archive_student(student['student_id'])
+            success, message = self.db.archive_student(student['student_id'], self.section['section_id'])
             if success:
                 QMessageBox.information(self, "Success", message)
                 self.refresh_student_table()
+                # Refresh My Classes page to update student count on cards
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'my_classes_page'):
+                    self.main_window.my_classes_page.load_sections()
+                # Refresh dashboard statistics
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'dashboard_page'):
+                    self.main_window.dashboard_page.refresh_statistics()
             else:
                 QMessageBox.warning(self, "Error", message)
     
@@ -1223,7 +2519,6 @@ class ClassDetailPage(QWidget):
             ("email", "Email (Required)", "student@example.com"),
             ("phone", "Phone Number (11 digits)", "e.g., 09123456789"),
             ("address", "Address", "Enter complete address"),
-            ("grade", "Grade (e.g., 1.25, 1.50, 2.00)", "e.g., 1.50"),
         ]
         
         for field_key, label_text, placeholder in field_configs:
@@ -1309,7 +2604,6 @@ class ClassDetailPage(QWidget):
             email = fields['email'].text().strip()
             phone = fields['phone'].text().strip()
             address = fields['address'].text().strip()
-            grade = fields['grade'].text().strip()
             
             # Validation
             if not student_id:
@@ -1333,15 +2627,6 @@ class ClassDetailPage(QWidget):
             if phone and (not phone.isdigit() or len(phone) != 11):
                 QMessageBox.warning(dialog, "Validation Error", "Phone number must be exactly 11 digits!")
                 return
-            if grade:
-                try:
-                    grade_float = float(grade)
-                    if grade_float < 0 or grade_float > 5:
-                        QMessageBox.warning(dialog, "Validation Error", "Grade must be between 0.00 and 5.00!")
-                        return
-                except ValueError:
-                    QMessageBox.warning(dialog, "Validation Error", "Grade must be a valid number!")
-                    return
             
             # Split full name into first and last name
             name_parts = full_name.split(maxsplit=1)
@@ -1356,8 +2641,7 @@ class ClassDetailPage(QWidget):
                 'age': int(age),
                 'email': email,
                 'phone': phone if phone else None,
-                'address': address if address else None,
-                'grade': grade if grade else None
+                'address': address if address else None
             }
             
             # Save or update
@@ -1370,6 +2654,12 @@ class ClassDetailPage(QWidget):
                 QMessageBox.information(dialog, "Success", message)
                 dialog.accept()
                 self.refresh_student_table()
+                # Refresh My Classes page to update student count on cards
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'my_classes_page'):
+                    self.main_window.my_classes_page.load_sections()
+                # Refresh dashboard statistics
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'dashboard_page'):
+                    self.main_window.dashboard_page.refresh_statistics()
             else:
                 QMessageBox.warning(dialog, "Error", message)
         
@@ -1447,8 +2737,8 @@ class ClassDetailPage(QWidget):
             table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeToContents)
             table.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)
             table.horizontalHeader().setSectionResizeMode(9, QHeaderView.Fixed)
-            table.setColumnWidth(8, 80)
-            table.setColumnWidth(9, 80)
+            table.setColumnWidth(8, 110)
+            table.setColumnWidth(9, 110)
             
             for row, student in enumerate(archived_students):
                 table.setItem(row, 0, QTableWidgetItem(student.get('student_id', '')))
@@ -1501,10 +2791,9 @@ class ClassDetailPage(QWidget):
             layout.addWidget(table)
         else:
             no_archive = QLabel("No archived students in this section")
-            no_archive.setStyleSheet("font-size: 16px; color: #999; padding: 40px;")
-            no_archive.setAlignment(Qt.AlignCenter)
+            no_archive.setStyleSheet("font-size: 16px; color: #999;")
             layout.addWidget(no_archive)
-        
+            layout.addStretch()
         # Close button
         close_btn = QPushButton("Close")
         close_btn.setCursor(Qt.PointingHandCursor)
@@ -1537,11 +2826,17 @@ class ClassDetailPage(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            success, message = self.db.restore_student(student['student_id'])
+            success, message = self.db.restore_student(student['student_id'], self.section['section_id'])
             if success:
                 QMessageBox.information(parent_dialog, "Success", message)
                 parent_dialog.accept()
                 self.refresh_student_table()
+                # Refresh My Classes page to update student count on cards
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'my_classes_page'):
+                    self.main_window.my_classes_page.load_sections()
+                # Refresh dashboard statistics
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'dashboard_page'):
+                    self.main_window.dashboard_page.refresh_statistics()
             else:
                 QMessageBox.warning(parent_dialog, "Error", message)
     
@@ -1555,10 +2850,16 @@ class ClassDetailPage(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            success, message = self.db.delete_student_permanently(student['student_id'])
+            success, message = self.db.delete_student_permanently(student['student_id'], self.section['section_id'])
             if success:
                 QMessageBox.information(parent_dialog, "Success", message)
                 parent_dialog.accept()
+                # Refresh My Classes page to update student count on cards
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'my_classes_page'):
+                    self.main_window.my_classes_page.load_sections()
+                # Refresh dashboard statistics
+                if hasattr(self, 'main_window') and hasattr(self.main_window, 'dashboard_page'):
+                    self.main_window.dashboard_page.refresh_statistics()
             else:
                 QMessageBox.warning(parent_dialog, "Error", message)
 

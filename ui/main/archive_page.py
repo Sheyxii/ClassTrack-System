@@ -31,18 +31,18 @@ class ArchivePage(QWidget):
         # Header
         header_layout = QHBoxLayout()
         
-        title = QLabel("📦 Archive")
+        title = QLabel("Archive")
         title.setStyleSheet("font-size: 28px; font-weight: 700; color: #222;")
         header_layout.addWidget(title)
         header_layout.addStretch()
         
         # Delete Selected button
-        delete_selected_btn = QPushButton("🗑️ DELETE SELECTED")
+        delete_selected_btn = QPushButton("DELETE SELECTED")
         delete_selected_btn.setCursor(Qt.PointingHandCursor)
         delete_selected_btn.setFixedHeight(40)
         delete_selected_btn.setStyleSheet("""
             QPushButton {
-                background-color: #FF6B6B;
+                background-color: black;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -51,19 +51,19 @@ class ArchivePage(QWidget):
                 font-weight: 700;
             }
             QPushButton:hover {
-                background-color: #FF5252;
+                background-color: #B71C1C;
             }
         """)
         delete_selected_btn.clicked.connect(self.delete_selected)
         header_layout.addWidget(delete_selected_btn)
         
         # Delete All button
-        delete_all_btn = QPushButton("🗑️ DELETE ALL")
+        delete_all_btn = QPushButton("DELETE ALL")
         delete_all_btn.setCursor(Qt.PointingHandCursor)
         delete_all_btn.setFixedHeight(40)
         delete_all_btn.setStyleSheet("""
             QPushButton {
-                background-color: #D32F2F;
+                background-color: black;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -77,27 +77,6 @@ class ArchivePage(QWidget):
         """)
         delete_all_btn.clicked.connect(self.delete_all)
         header_layout.addWidget(delete_all_btn)
-        
-        # Refresh button
-        refresh_btn = QPushButton("🔄 Refresh")
-        refresh_btn.setCursor(Qt.PointingHandCursor)
-        refresh_btn.setFixedHeight(40)
-        refresh_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                color: #222;
-                border: none;
-                border-radius: 8px;
-                padding: 8px 20px;
-                font-size: 14px;
-                font-weight: 600;
-            }
-            QPushButton:hover {
-                background-color: #F0F0F0;
-            }
-        """)
-        refresh_btn.clicked.connect(self.load_archived_sections)
-        header_layout.addWidget(refresh_btn)
         
         content_layout.addLayout(header_layout)
 
@@ -135,7 +114,6 @@ class ArchivePage(QWidget):
         self.load_archived_sections()
 
     def load_archived_sections(self):
-        """Load all archived sections"""
         # Clear existing content
         while self.archive_layout.count():
             item = self.archive_layout.takeAt(0)
@@ -204,8 +182,8 @@ class ArchivePage(QWidget):
             table.setColumnWidth(0, 80)
             table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
             table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-            table.setColumnWidth(3, 120)
-            table.setColumnWidth(4, 120)
+            table.setColumnWidth(3, 130)
+            table.setColumnWidth(4, 130)
 
             for row, section in enumerate(archived_sections):
                 # Checkbox
@@ -229,7 +207,7 @@ class ArchivePage(QWidget):
                 # Restore button
                 restore_btn = QPushButton(" Restore")
                 restore_btn.setIcon(QIcon("image/restore.png"))
-                restore_btn.setIconSize(QSize(20, 20))
+                restore_btn.setIconSize(QSize(18, 18))
                 restore_btn.setCursor(Qt.PointingHandCursor)
                 restore_btn.setStyleSheet("""
                     QPushButton {
@@ -250,7 +228,7 @@ class ArchivePage(QWidget):
                 # Permanent delete button
                 delete_btn = QPushButton(" Delete")
                 delete_btn.setIcon(QIcon("image/bin.png"))
-                delete_btn.setIconSize(QSize(20, 20))
+                delete_btn.setIconSize(QSize(18, 18))
                 delete_btn.setCursor(Qt.PointingHandCursor)
                 delete_btn.setStyleSheet("""
                     QPushButton {

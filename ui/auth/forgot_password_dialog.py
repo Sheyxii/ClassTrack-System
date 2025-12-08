@@ -13,7 +13,7 @@ class ForgotPasswordDialog(QDialog):
         self.setMinimumWidth(500)
         self.db = DatabaseConnection()
         
-        # Main layout
+        # Layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
@@ -27,35 +27,12 @@ class ForgotPasswordDialog(QDialog):
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("color: #666; font-size: 14px; margin-bottom: 20px;")
         
-        # Email
         email_label = QLabel("Email")
         email_label.setStyleSheet("font-weight: bold; color: #222;")
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("Enter your registered email")
         self.email_input.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; padding: 10px; font-size: 14px;")
         
-        # Current Password
-        current_password_label = QLabel("Current Password")
-        current_password_label.setStyleSheet("font-weight: bold; color: #222;")
-        current_password_frame = QFrame()
-        current_password_layout = QHBoxLayout(current_password_frame)
-        current_password_layout.setContentsMargins(0, 0, 0, 0)
-        current_password_layout.setSpacing(5)
-        self.current_password_input = QLineEdit()
-        self.current_password_input.setPlaceholderText("Enter your current password")
-        self.current_password_input.setEchoMode(QLineEdit.Password)
-        self.current_password_input.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; padding: 10px; font-size: 14px;")
-        self.current_password_eye_btn = QPushButton()
-        self.current_password_eye_btn.setIcon(QIcon("image/eye.png"))
-        self.current_password_eye_btn.setIconSize(QSize(20, 20))
-        self.current_password_eye_btn.setCheckable(True)
-        self.current_password_eye_btn.setFixedSize(35, 35)
-        self.current_password_eye_btn.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; background-color: #f5f5f5;")
-        self.current_password_eye_btn.toggled.connect(self.toggle_current_password)
-        current_password_layout.addWidget(self.current_password_input)
-        current_password_layout.addWidget(self.current_password_eye_btn)
-        
-        # New Password
         password_label = QLabel("New Password")
         password_label.setStyleSheet("font-weight: bold; color: #222;")
         password_frame = QFrame()
@@ -76,7 +53,6 @@ class ForgotPasswordDialog(QDialog):
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.password_eye_btn)
         
-        # Confirm Password
         confirm_label = QLabel("Confirm Password")
         confirm_label.setStyleSheet("font-weight: bold; color: #222;")
         confirm_frame = QFrame()
@@ -98,13 +74,11 @@ class ForgotPasswordDialog(QDialog):
         confirm_layout.addWidget(self.confirm_input)
         confirm_layout.addWidget(self.confirm_eye_btn)
         
-        # Reset Button
         reset_btn = QPushButton("Reset Password")
         reset_btn.setCursor(Qt.PointingHandCursor)
         reset_btn.clicked.connect(self.reset_password)
         reset_btn.setStyleSheet("background-color: #222; color: white; font-weight: bold; border-radius: 20px; padding: 12px; font-size: 15px;")
         
-        # Back to Login Link
         back_frame = QFrame()
         back_layout = QHBoxLayout(back_frame)
         back_layout.setAlignment(Qt.AlignCenter)
@@ -138,8 +112,6 @@ class ForgotPasswordDialog(QDialog):
         layout.addWidget(subtitle)
         layout.addWidget(email_label)
         layout.addWidget(self.email_input)
-        layout.addWidget(current_password_label)
-        layout.addWidget(current_password_frame)
         layout.addWidget(password_label)
         layout.addWidget(password_frame)
         layout.addWidget(confirm_label)
@@ -147,14 +119,6 @@ class ForgotPasswordDialog(QDialog):
         layout.addSpacing(10)
         layout.addWidget(reset_btn)
         layout.addWidget(back_frame)
-    
-    def toggle_current_password(self, checked):
-        if checked:
-            self.current_password_input.setEchoMode(QLineEdit.Normal)
-            self.current_password_eye_btn.setIcon(QIcon("image/hidden.png"))
-        else:
-            self.current_password_input.setEchoMode(QLineEdit.Password)
-            self.current_password_eye_btn.setIcon(QIcon("image/eye.png"))
     
     def toggle_password(self, checked):
         if checked:
@@ -173,14 +137,13 @@ class ForgotPasswordDialog(QDialog):
             self.confirm_eye_btn.setIcon(QIcon("image/eye.png"))
     
     def reset_password(self):
-        # Get input values
+        # Get inputs
         email = self.email_input.text().strip()
-        current_password = self.current_password_input.text()
         password = self.password_input.text()
         confirm_password = self.confirm_input.text()
         
-        # Validate inputs
-        if not all([email, current_password, password, confirm_password]):
+        # Validate fields
+        if not all([email, password, confirm_password]):
             QMessageBox.warning(self, "Input Error", "Please fill in all fields")
             return
         
@@ -189,26 +152,21 @@ class ForgotPasswordDialog(QDialog):
             QMessageBox.warning(self, "Invalid Email", "Please enter a valid email address")
             return
         
-        # Verify current password
-        success, message, user_data = self.db.validate_user_by_email(email, current_password)
-        if not success:
-            QMessageBox.critical(self, "Verification Failed", "Email or current password is incorrect")
-            self.current_password_input.clear()
-            self.current_password_input.setFocus()
+        # Verify email exists in database
+        if not self.db.email_exists(email):
+            QMessageBox.critical(self, "Verification Failed", "Email not found in our records")
+            self.email_input.clear()
+            self.email_input.setFocus()
             return
         
         if password != confirm_password:
-            QMessageBox.warning(self, "Password Mismatch", "New passwords do not match")
+            QMessageBox.warning(self, "Password Mismatch", "Passwords do not match")
             self.confirm_input.clear()
             self.confirm_input.setFocus()
             return
         
         if len(password) < 6:
             QMessageBox.warning(self, "Weak Password", "Password must be at least 6 characters long")
-            return
-        
-        if password == current_password:
-            QMessageBox.warning(self, "Same Password", "New password must be different from current password")
             return
         
         # Reset password in database
