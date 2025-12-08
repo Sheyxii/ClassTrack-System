@@ -99,10 +99,6 @@ class MyClassesPage(QWidget):
             placeholder.setStyleSheet("font-size: 18px; color: #555; padding: 40px;")
             placeholder.setAlignment(Qt.AlignCenter)
             self.classes_layout.addWidget(placeholder, 0, 0, 1, 3)
-        
-        # Refresh dashboard chart if available
-        if self.dashboard_page:
-            self.dashboard_page.refresh_chart()
 
     def clear_classes_layout(self):
         """Clear all widgets from classes layout"""
@@ -300,10 +296,6 @@ class MyClassesPage(QWidget):
     def refresh_current_view(self):
         """Refresh the classes list after changes"""
         self.load_sections()
-        
-        # Refresh dashboard chart if available
-        if self.dashboard_page:
-            self.dashboard_page.refresh_chart()
         
         # Update main window's class pages and submenus if they exist
         if hasattr(self, 'main_window'):
