@@ -81,13 +81,100 @@ class MainWindow(QMainWindow):
         
         sidebar_content = QWidget()
         sidebar_layout = QVBoxLayout(sidebar_content)
-        sidebar_layout.setContentsMargins(25, 45, 25, 45)
+        sidebar_layout.setContentsMargins(20, 30, 20, 30)
         sidebar_layout.setSpacing(10)
 
-        logo = QLabel("ClassTrack")
-        logo.setStyleSheet("font-size: 22px; font-weight: bold;")
-        sidebar_layout.addWidget(logo)
-        sidebar_layout.addSpacing(30)
+        # Header with user profile
+        header_widget = QWidget()
+        header_widget.setStyleSheet("background: transparent;")
+        header_layout = QVBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(0)
+
+        # User profile card in sidebar
+        profile_card = QFrame()
+        profile_card.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #2C5F7C, stop:1 #4A7A9E);
+                border-radius: 0px;
+                padding: 20px;
+            }
+        """)
+        profile_card.setFixedHeight(100)
+        
+        profile_layout = QHBoxLayout(profile_card)
+        profile_layout.setContentsMargins(15, 15, 15, 15)
+        profile_layout.setSpacing(15)
+        
+        # Profile icon with border
+        profile_icon_container = QFrame()
+        profile_icon_container.setFixedSize(60, 60)
+        profile_icon_container.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border-radius: 30px;
+                border: 3px solid white;
+            }
+        """)
+        icon_layout = QHBoxLayout(profile_icon_container)
+        icon_layout.setContentsMargins(0, 0, 0, 0)
+        icon_layout.setAlignment(Qt.AlignCenter)
+        
+        profile_icon = QLabel()
+        profile_icon.setPixmap(QIcon("image/user.png").pixmap(36, 36))
+        profile_icon.setAlignment(Qt.AlignCenter)
+        icon_layout.addWidget(profile_icon)
+        
+        # User info
+        user_info_widget = QWidget()
+        user_info_widget.setStyleSheet("background: transparent;")
+        user_info_layout = QVBoxLayout(user_info_widget)
+        user_info_layout.setContentsMargins(0, 5, 0, 5)
+        user_info_layout.setSpacing(2)
+        
+        user_name = QLabel(self.username)
+        user_name.setStyleSheet("font-size: 18px; color: white; font-weight: 700; background: transparent;")
+        
+        # Online status with green dot
+        status_widget = QWidget()
+        status_widget.setStyleSheet("background: transparent;")
+        status_layout = QHBoxLayout(status_widget)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(6)
+        
+        # Green dot indicator
+        online_dot = QLabel()
+        online_dot.setFixedSize(10, 10)
+        online_dot.setStyleSheet("""
+            QLabel {
+                background-color: #00D66B;
+                border-radius: 5px;
+            }
+        """)
+        
+        online_label = QLabel("Online")
+        online_label.setStyleSheet("font-size: 13px; color: #00D66B; font-weight: 500; background: transparent;")
+        
+        status_layout.addWidget(online_dot)
+        status_layout.addWidget(online_label)
+        status_layout.addStretch()
+        
+        user_info_layout.addWidget(user_name)
+        user_info_layout.addWidget(status_widget)
+        user_info_layout.addStretch()
+        
+        profile_layout.addWidget(profile_icon_container)
+        profile_layout.addWidget(user_info_widget)
+        profile_layout.addStretch()
+        
+        # Make profile card clickable
+        profile_card.mousePressEvent = lambda event: self.show_profile_menu(event, profile_card)
+        profile_card.setCursor(Qt.PointingHandCursor)
+        
+        header_layout.addWidget(profile_card)
+        sidebar_layout.addWidget(header_widget)
+        sidebar_layout.addSpacing(20)
 
         self.buttons = {}
         
@@ -256,90 +343,13 @@ class MainWindow(QMainWindow):
         top_bar_layout.setContentsMargins(30, 15, 30, 5)
         top_bar_layout.setSpacing(20)
 
-        search_bar = QLineEdit()
-        search_bar.setPlaceholderText("Search anything...")
-        search_bar.setFixedWidth(400)
-        search_bar.setFixedHeight(40)
-        search_bar.setStyleSheet("""
-            QLineEdit {
-                background-color: white;
-                border-radius: 20px;
-                padding: 8px 20px;
-                font-size: 16px;
-            }
-        """)
-        top_bar_layout.addWidget(search_bar)
         top_bar_layout.addStretch()
 
-        # User dropdown button
-        user_dropdown = QPushButton()
-        user_dropdown.setCursor(Qt.PointingHandCursor)
-        user_dropdown.setFixedHeight(60)
-        user_dropdown.setFixedWidth(240)
-        user_dropdown.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border-radius: 12px;
-                padding: 8px 12px;
-                text-align: left;
-                font-size: 16px;
-                color: #333;
-                border: 1px solid #E0E0E0;
-            }
-            QPushButton:hover {
-                background-color: #FAFAFA;
-                border: 1px solid #CCC;
-            }
-        """)
-        
-        # Create layout for button content
-        button_layout = QHBoxLayout()
-        button_layout.setContentsMargins(8, 5, 8, 5)
-        button_layout.setSpacing(12)
-        
-        # Profile icon with purple background
-        profile_icon_container = QFrame()
-        profile_icon_container.setFixedSize(44, 44)
-        profile_icon_container.setStyleSheet("""
-            QFrame {
-                background-color: transparent;
-                border-radius: 8px;
-            }
-        """)
-        icon_layout = QHBoxLayout(profile_icon_container)
-        icon_layout.setContentsMargins(0, 0, 0, 0)
-        icon_layout.setAlignment(Qt.AlignCenter)
-        
-        profile_icon = QLabel()
-        profile_icon.setPixmap(QIcon("image/user.png").pixmap(28, 28))
-        profile_icon.setStyleSheet("background: transparent;")
-        profile_icon.setAlignment(Qt.AlignCenter)
-        icon_layout.addWidget(profile_icon)
-        
-        # Username and status
-        user_info_widget = QWidget()
-        user_info_widget.setStyleSheet("background: transparent;")
-        user_info_layout = QVBoxLayout(user_info_widget)
-        user_info_layout.setContentsMargins(0, 0, 0, 0)
-        user_info_layout.setSpacing(2)
-        
-        user_name = QLabel(self.username)
-        user_name.setStyleSheet("font-size: 15px; color: #222; font-weight: 600; background: transparent;")
-        
-        user_status = QLabel("View Profile")
-        user_status.setStyleSheet("font-size: 12px; color: #836FFF; background: transparent;")
-        
-        user_info_layout.addWidget(user_name)
-        user_info_layout.addWidget(user_status)
-        
-        button_layout.addWidget(profile_icon_container)
-        button_layout.addWidget(user_info_widget)
-        button_layout.addStretch()
-        
-        user_dropdown.setLayout(button_layout)
-        
-        # Create dropdown menu
-        dropdown_menu = QMenu(user_dropdown)
+        return top_bar_container
+    
+    def show_profile_menu(self, event, profile_card):
+        """Show profile dropdown menu"""
+        dropdown_menu = QMenu(self)
         dropdown_menu.setStyleSheet("""
             QMenu {
                 background-color: white;
@@ -362,7 +372,6 @@ class MainWindow(QMainWindow):
         change_password_action = QAction("Change Password", self)
         logout_action = QAction("Logout", self)
         
-        # Connect actions (you can implement these methods later)
         view_profile_action.triggered.connect(self.view_profile)
         change_password_action.triggered.connect(self.change_password)
         logout_action.triggered.connect(self.logout)
@@ -372,15 +381,9 @@ class MainWindow(QMainWindow):
         dropdown_menu.addSeparator()
         dropdown_menu.addAction(logout_action)
         
-        user_dropdown.setMenu(dropdown_menu)
-        user_dropdown.clicked.connect(lambda: dropdown_menu.exec_(user_dropdown.mapToGlobal(user_dropdown.rect().bottomLeft())))
-        
-        top_bar_layout.addWidget(user_dropdown)
-
-        return top_bar_container
+        dropdown_menu.exec_(profile_card.mapToGlobal(profile_card.rect().bottomLeft()))
     
     def view_profile(self):
-        """View user profile"""
         QMessageBox.information(self, "Profile", f"Viewing profile for {self.username}")
     
     def change_password(self):
