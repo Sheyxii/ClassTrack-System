@@ -908,6 +908,10 @@ class DatabaseConnection:
         try:
             cursor = self.connection.cursor()
             
+            # Convert empty or zero values to None
+            midterm = midterm if midterm and midterm > 0 else None
+            final = final if final and final > 0 else None
+            
             # Check if grades already exist
             check_query = """
                 SELECT grade_id FROM grades 
@@ -925,12 +929,13 @@ class DatabaseConnection:
                 """
                 cursor.execute(update_query, (midterm, final, student_id, section_id))
             else:
-                # Insert new grades
-                insert_query = """
-                    INSERT INTO grades (student_id, section_id, midterm, final)
-                    VALUES (%s, %s, %s, %s)
-                """
-                cursor.execute(insert_query, (student_id, section_id, midterm, final))
+                # Only insert if at least one grade is provided
+                if midterm is not None or final is not None:
+                    insert_query = """
+                        INSERT INTO grades (student_id, section_id, midterm, final)
+                        VALUES (%s, %s, %s, %s)
+                    """
+                    cursor.execute(insert_query, (student_id, section_id, midterm, final))
             
             self.connection.commit()
             cursor.close()
