@@ -575,6 +575,46 @@ class SchedulePage(QWidget):
         main_layout.addWidget(left_widget, 3)
         main_layout.addWidget(right_widget, 1)
 
+    def times_overlap(self, time1, time2):
+        """Check if two time ranges overlap"""
+        try:
+            # Parse time ranges like "7:00 - 7:30" or "7:00-7:30"
+            def parse_time_range(time_str):
+                # Remove spaces and split by dash
+                time_str = time_str.replace(' ', '')
+                parts = time_str.split('-')
+                if len(parts) != 2:
+                    return None, None
+                
+                # Parse start and end times
+                start_parts = parts[0].split(':')
+                end_parts = parts[1].split(':')
+                
+                if len(start_parts) != 2 or len(end_parts) != 2:
+                    return None, None
+                
+                start_hour = int(start_parts[0])
+                start_min = int(start_parts[1])
+                end_hour = int(end_parts[0])
+                end_min = int(end_parts[1])
+                
+                # Convert to minutes since midnight
+                start_total = start_hour * 60 + start_min
+                end_total = end_hour * 60 + end_min
+                
+                return start_total, end_total
+            
+            start1, end1 = parse_time_range(time1)
+            start2, end2 = parse_time_range(time2)
+            
+            if start1 is None or start2 is None:
+                return False
+            
+            # Check for overlap: times overlap if one starts before the other ends
+            return (start1 < end2 and end1 > start2)
+        except:
+            return False
+
     def load_schedules(self):
         """Load schedules from database."""
         schedules_data = self.db.get_schedules(self.user_id)
@@ -643,6 +683,18 @@ class SchedulePage(QWidget):
                     f"This schedule already exists:\n\n{data['subject']} ({data['section']})\n{data['day']} {data['time']}\nRoom {data['room']}\n\nPlease modify the schedule details."
                 )
                 return
+            
+            # Check for time overlap on the same day
+            for sched in self.schedules:
+                if sched['day'].lower() == data['day'].lower():
+                    # Check if times overlap
+                    if self.times_overlap(sched['time'], data['time']):
+                        QMessageBox.warning(
+                            self,
+                            "Schedule Conflict",
+                            f"Time conflict detected!\n\nExisting schedule:\n{sched['subject']} ({sched['section']})\n{sched['day']} {sched['time']}\nRoom {sched['room']}\n\nNew schedule:\n{data['subject']} ({data['section']})\n{data['day']} {data['time']}\nRoom {data['room']}\n\nPlease choose a different time slot."
+                        )
+                        return
             
             # Assign random color
             colors = ["#F0C7CF", "#A3C7D6", "#C9919E", "#D5D0D5", "#F7D08A", "#B5EAD7", "#FFDAC1"]
