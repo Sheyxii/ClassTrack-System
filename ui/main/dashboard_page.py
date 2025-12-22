@@ -237,31 +237,65 @@ class DashboardPage(QWidget):
                 grades = self.db.get_student_grades(student_id, section['section_id']) if hasattr(self.db, 'get_student_grades') else {}
                 
                 if grades:
-                    midterm = float(grades.get('midterm', 0.0)) if grades.get('midterm') else 0.0
-                    final = float(grades.get('final', 0.0)) if grades.get('final') else 0.0
+                    midterm_val = grades.get('midterm')
+                    final_val = grades.get('final')
                     
-                    # Calculate semestral grade (average of midterm and final)
-                    if midterm or final:
-                        semestral = round((midterm + final) / 2, 2)
+                    # Only calculate if both grades exist and are greater than 0
+                    if midterm_val is not None and final_val is not None:
+                        midterm = float(midterm_val)
+                        final = float(final_val)
                         
-                        # Calculate attendance rate for display
-                        attendance_rate = self.calculate_attendance_rate(student_id, section['section_id'])
-                        
-                        # Lower grade number is better (1.00 is best, 5.00 is worst)
-                        # Sort by semestral grade (ascending - lower is better)
-                        all_students.append({
-                            'student_id': student_id,
-                            'name': f"{student.get('first_name', '')} {student.get('last_name', '')}".strip(),
-                            'section': section['section_name'],
-                            'semestral': semestral,
-                            'attendance': attendance_rate,
-                            'score': semestral  # Use semestral grade directly
-                        })
+                        if midterm > 0 and final > 0:
+                            # Calculate average score (0-100)
+                            avg_score = (midterm + final) / 2
+                            # Convert to 1.00-5.00 grading scale
+                            semestral = self.convert_score_to_grade(avg_score)
+                            
+                            # Calculate attendance rate for display
+                            attendance_rate = self.calculate_attendance_rate(student_id, section['section_id'])
+                            
+                            # Lower grade number is better (1.00 is best, 5.00 is worst)
+                            # Sort by semestral grade (ascending - lower is better)
+                            all_students.append({
+                                'student_id': student_id,
+                                'name': f"{student.get('first_name', '')} {student.get('last_name', '')}".strip(),
+                                'section': section['section_name'],
+                                'semestral': semestral,
+                                'attendance': attendance_rate,
+                                'score': semestral  # Use semestral grade directly
+                            })
 
         # Sort by semestral grade (ascending - lower grade is better)
         all_students.sort(key=lambda x: x['score'])
         
         return all_students
+
+    def convert_score_to_grade(self, score):
+        """Convert 0-100 score to 1.00-5.00 grading scale based on the grading system"""
+        if score >= 99:
+            return 1.00
+        elif score >= 96:
+            return 1.25
+        elif score >= 93:
+            return 1.50
+        elif score >= 90:
+            return 1.75
+        elif score >= 87:
+            return 2.00
+        elif score >= 84:
+            return 2.25
+        elif score >= 81:
+            return 2.50
+        elif score >= 78:
+            return 2.75
+        elif score >= 75:
+            return 3.00
+        elif score >= 70:
+            return 4.00
+        elif score >= 69:
+            return 5.00
+        else:
+            return 5.00  # Failed
 
     def calculate_attendance_rate(self, student_id, section_id):
         """Calculate attendance rate for a student"""
