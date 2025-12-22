@@ -129,15 +129,6 @@ INSERT INTO users (username, password, email) VALUES
 ('roxanne', 'roxanne', 'roxanne@gmail.com')
 ON DUPLICATE KEY UPDATE username=username;
 
-# Update grades table to support 0-100 scores (run after table creation)
-ALTER TABLE grades 
-MODIFY COLUMN midterm DECIMAL(5,2) DEFAULT NULL,
-MODIFY COLUMN final DECIMAL(5,2) DEFAULT NULL;
-
-# Update existing 0 values to NULL for cleaner display
-UPDATE grades SET midterm = NULL WHERE midterm = 0.00;
-UPDATE grades SET final = NULL WHERE final = 0.00;
-
 # ============================================
 # VIEW TABLES QUERIES
 # ============================================
