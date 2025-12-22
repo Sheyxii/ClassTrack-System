@@ -8,12 +8,12 @@ class SignupDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("ClassTrack - Sign Up")
-        self.setWindowIcon(QIcon("image/class.png"))
+        self.setWindowIcon(QIcon("image/system.png"))
         self.setStyleSheet("background-color: white;")
         self.setMinimumWidth(500)
         self.db = DatabaseConnection()
         
-        # Layout
+        # Main layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
@@ -23,18 +23,21 @@ class SignupDialog(QDialog):
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 28px; font-weight: 700; color: #222; margin-bottom: 10px;")
         
+        # Email
         email_label = QLabel("Email")
         email_label.setStyleSheet("font-weight: bold; color: #222;")
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("Enter your email")
         self.email_input.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; padding: 10px; font-size: 14px;")
         
+        # Username
         username_label = QLabel("Username")
         username_label.setStyleSheet("font-weight: bold; color: #222;")
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Choose a username")
         self.username_input.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; padding: 10px; font-size: 14px;")
         
+        # Password
         password_label = QLabel("Password")
         password_label.setStyleSheet("font-weight: bold; color: #222;")
         password_frame = QFrame()
@@ -55,6 +58,7 @@ class SignupDialog(QDialog):
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.password_eye_btn)
         
+        # Confirm Password
         confirm_label = QLabel("Confirm Password")
         confirm_label.setStyleSheet("font-weight: bold; color: #222;")
         confirm_frame = QFrame()
@@ -76,9 +80,11 @@ class SignupDialog(QDialog):
         confirm_layout.addWidget(self.confirm_input)
         confirm_layout.addWidget(self.confirm_eye_btn)
         
-        self.terms_checkbox = QCheckBox("I agree to the Terms & Conditions")
+        # Terms & Conditions Checkbox
+        self.terms_checkbox = QCheckBox("I agree to the Terms  Conditions")
         self.terms_checkbox.setStyleSheet("color: #666; font-size: 13px;")
         
+        # Signup Button
         signup_btn = QPushButton("Signup")
         signup_btn.setCursor(Qt.PointingHandCursor)
         signup_btn.clicked.connect(self.create_account)
@@ -115,13 +121,13 @@ class SignupDialog(QDialog):
             self.confirm_eye_btn.setIcon(QIcon("image/eye.png"))
     
     def create_account(self):
-        # Get inputs
+        # Get input values
         email = self.email_input.text().strip()
         username = self.username_input.text().strip()
         password = self.password_input.text()
         confirm_password = self.confirm_input.text()
         
-        # Validate fields
+        # Validate inputs
         if not all([email, username, password, confirm_password]):
             QMessageBox.warning(self, "Input Error", "Please fill in all fields")
             return

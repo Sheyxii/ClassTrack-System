@@ -13,6 +13,7 @@ class CreateScheduleDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Add Schedule")
+        self.setWindowIcon(QIcon("image/system.png"))
         self.setFixedSize(500, 620)
         self.setStyleSheet("""
             QDialog {
@@ -250,7 +251,8 @@ class DeleteScheduleDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Delete Schedule")
-        self.setFixedSize(500, 450)
+        self.setWindowIcon(QIcon("image/system.png"))
+        self.setFixedSize(500, 300)
         self.setStyleSheet("""
             QDialog {
                 background-color: white;
@@ -466,7 +468,7 @@ class SchedulePage(QWidget):
         delete_btn.setFixedHeight(45)
         delete_btn.setStyleSheet("""
             QPushButton {
-                background-color: #EF4444;
+                background-color: #4C9AFF;
                 color: white;
                 border: none;
                 border-radius: 12px;
@@ -475,7 +477,7 @@ class SchedulePage(QWidget):
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #DC2626;
+                background-color: #3A7FD5;
             }
         """)
         delete_btn.clicked.connect(self.delete_schedule)
@@ -621,6 +623,25 @@ class SchedulePage(QWidget):
             
             if not all(data.values()):
                 QMessageBox.warning(self, "Input Error", "All fields must be filled out.")
+                return
+            
+            # Check for duplicate schedule
+            duplicate_found = False
+            for sched in self.schedules:
+                if (sched['subject'].lower() == data['subject'].lower() and
+                    sched['section'].lower() == data['section'].lower() and
+                    sched['day'].lower() == data['day'].lower() and
+                    sched['time'].lower() == data['time'].lower() and
+                    sched['room'].lower() == data['room'].lower()):
+                    duplicate_found = True
+                    break
+            
+            if duplicate_found:
+                QMessageBox.warning(
+                    self, 
+                    "Duplicate Schedule", 
+                    f"This schedule already exists:\n\n{data['subject']} ({data['section']})\n{data['day']} {data['time']}\nRoom {data['room']}\n\nPlease modify the schedule details."
+                )
                 return
             
             # Assign random color

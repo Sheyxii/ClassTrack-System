@@ -17,6 +17,7 @@ class MainWindow(QMainWindow):
         self.username = username
         self.user_id = user_id
         self.setWindowTitle("ClassTrack - Main Window")
+        self.setWindowIcon(QIcon("image/system.png"))
         self.setGeometry(100, 100, 1250, 750)
         self.setStyleSheet("background-color: #E7E7DF;")
 
@@ -231,8 +232,8 @@ class MainWindow(QMainWindow):
         logout_btn.setCursor(Qt.PointingHandCursor)
         logout_btn.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
-                color: white;
+                background-color: darkgray;
+                color: black;
                 font-size: 16px;
                 text-align: center;
                 padding: 12px;
@@ -240,7 +241,7 @@ class MainWindow(QMainWindow):
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #C62828;
+                background-color: gray;
             }
         """)
         logout_btn.clicked.connect(self.logout)
@@ -396,7 +397,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Change Password", "Change password functionality")
     
     def logout(self):
-        """Logout user"""
+        #Logout user
         reply = QMessageBox.question(self, 'Logout', 
                                     'Are you sure you want to logout?',
                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -430,6 +431,8 @@ class MainWindow(QMainWindow):
                 self.archive_page.load_archived_sections()
             elif page_name == "My Classes":
                 self.my_classes_page.load_sections()
+            elif page_name == "Resources":
+                self.resources_page.refresh_subject_filter()
 
     def open_class_page(self, section, card_color=None):
         """Open or create a class detail page for the given section"""

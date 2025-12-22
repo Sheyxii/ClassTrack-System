@@ -6,8 +6,8 @@ sys.path.append('..')
 from utils.database import DatabaseConnection
 
 
-class GradeLineEdit(QLineEdit):
-    """Custom QLineEdit that shows error message for invalid input"""
+class GradeLineEdit(QLineEdit): #Custom QLineEdit that shows error message for invalid input
+    
     def __init__(self, parent_widget, field_name):
         super().__init__()
         self.parent_widget = parent_widget
@@ -570,17 +570,19 @@ class ClassDetailPage(QWidget):
         self.attendance_search_input.textChanged.connect(self.filter_attendance_table)
         search_layout.addWidget(self.attendance_search_input, 1)
         
-        clear_btn = QPushButton("Clear")
+        clear_btn = QPushButton("✕ Clear")
         clear_btn.setCursor(Qt.PointingHandCursor)
-        clear_btn.setFixedWidth(80)
+        clear_btn.setFixedHeight(40)
+        clear_btn.setFixedWidth(90)
         clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #F5F5F5;
-                color: #333;
+                background-color: #E0E0E0;
+                color: #555;
                 border: none;
-                border-radius: 8px;
+                border-radius: 6px;
                 font-size: 13px;
                 font-weight: 600;
+                padding: 8px 16px;
             }
             QPushButton:hover {
                 background-color: #D0D0D0;
@@ -818,6 +820,7 @@ class ClassDetailPage(QWidget):
         """View detailed attendance for a specific date"""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Attendance Details - {record['date']}")
+        dialog.setWindowIcon(QIcon("image/system.png"))
         dialog.setMinimumSize(800, 600)
         dialog.setStyleSheet("background-color: white;")
         
@@ -968,6 +971,7 @@ class ClassDetailPage(QWidget):
         
         dialog = QDialog(self)
         dialog.setWindowTitle("Create Attendance")
+        dialog.setWindowIcon(QIcon("image/system.png"))
         dialog.setMinimumSize(900, 600)
         dialog.setStyleSheet("background-color: white;")
         
@@ -1248,6 +1252,7 @@ class ClassDetailPage(QWidget):
         
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Edit Attendance - {record['date']}")
+        dialog.setWindowIcon(QIcon("image/system.png"))
         dialog.setMinimumSize(900, 600)
         dialog.setStyleSheet("background-color: white;")
         

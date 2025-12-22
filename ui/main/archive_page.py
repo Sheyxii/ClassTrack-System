@@ -113,7 +113,7 @@ class ArchivePage(QWidget):
         # Load archived sections
         self.load_archived_sections()
 
-    def load_archived_sections(self):
+    def load_archived_sections(self): # Load all archived sections
         # Clear existing content
         while self.archive_layout.count():
             item = self.archive_layout.takeAt(0)

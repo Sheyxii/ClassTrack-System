@@ -47,6 +47,24 @@ class ResourcesPage(QWidget):
             if subject:
                 subjects.add(subject)
         return ['All'] + sorted(list(subjects))
+    
+    def refresh_subject_filter(self):
+        """Refresh the subject filter dropdown with updated subjects"""
+        current_selection = self.subject_filter.currentText()
+        self.subject_filter.clear()
+        
+        user_subjects = self.get_user_subjects()
+        if len(user_subjects) == 1:  # Only 'All'
+            self.subject_filter.addItems(['All'])
+        else:
+            self.subject_filter.addItems(user_subjects)
+        
+        # Try to restore previous selection
+        index = self.subject_filter.findText(current_selection)
+        if index >= 0:
+            self.subject_filter.setCurrentIndex(index)
+        else:
+            self.subject_filter.setCurrentIndex(0)  # Default to 'All'
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -458,7 +476,8 @@ class ResourcesPage(QWidget):
         """Show dialog to upload new resource"""
         dialog = QDialog(self)
         dialog.setWindowTitle("Upload Resource")
-        dialog.setFixedSize(560, 580)
+        dialog.setWindowIcon(QIcon("image/system.png"))
+        dialog.setFixedSize(500, 550)
         dialog.setStyleSheet("QDialog { background-color: white; }")
         
         layout = QVBoxLayout(dialog)

@@ -358,8 +358,6 @@ class DatabaseConnection:
     def add_student(self, student_data):
         """
         Mag-add ng new student
-        student_data: dict with keys: student_id, section_id, first_name, last_name, age, email, phone, birthday, address
-        Returns: (success: bool, message: str)
         """
         required_fields = ['student_id', 'section_id', 'first_name', 'last_name']
         for field in required_fields:

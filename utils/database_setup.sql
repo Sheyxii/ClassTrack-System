@@ -360,3 +360,21 @@ WHERE s.is_archived = FALSE
 GROUP BY s.section_id, s.section_name, s.subject, s.room
 ORDER BY s.section_name;
 
+
+
+
+-- SEE STUDENT GRADES WITH SECTIONS
+SELECT 
+    st.student_id, 
+    CONCAT(st.first_name, ' ', st.last_name) AS student_name, 
+    s.section_name, 
+    g.midterm, 
+    g.final, 
+    CAST(AVG(g.midterm + g.final) / 2 AS DECIMAL(10,2)) AS semestral_grade
+FROM students st
+JOIN sections s ON st.section_id = s.section_id
+LEFT JOIN grades g ON st.student_id = g.student_id 
+    AND st.section_id = g.section_id
+WHERE st.is_archived = FALSE
+GROUP BY st.student_id, st.first_name, st.last_name, s.section_name, g.midterm, g.final
+ORDER BY s.section_name, semestral_grade ASC;

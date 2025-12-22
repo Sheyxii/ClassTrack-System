@@ -882,7 +882,8 @@ class MyClassesPage(QWidget):
     def add_section_dialog(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Create class")
-        dialog.setFixedSize(500, 500)
+        dialog.setWindowIcon(QIcon("image/system.png"))
+        dialog.setFixedSize(500, 350)
         dialog.setStyleSheet("background-color: white;")
         
         layout = QVBoxLayout(dialog)
@@ -894,48 +895,6 @@ class MyClassesPage(QWidget):
         layout.addWidget(title)
         
         layout.addSpacing(10)
-        
-        # Class name input
-        class_name_label = QLabel("Class name (required)")
-        class_name_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
-        layout.addWidget(class_name_label)
-        
-        class_name_input = QLineEdit()
-        class_name_input.setPlaceholderText("")
-        class_name_input.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 14px;
-                background-color: white;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4285F4;
-            }
-        """)
-        layout.addWidget(class_name_input)
-        
-        # Section input
-        section_label = QLabel("Section")
-        section_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
-        layout.addWidget(section_label)
-        
-        section_input = QLineEdit()
-        section_input.setPlaceholderText("")
-        section_input.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 14px;
-                background-color: white;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4285F4;
-            }
-        """)
-        layout.addWidget(section_input)
         
         # Subject input
         subject_label = QLabel("Subject")
@@ -958,14 +917,14 @@ class MyClassesPage(QWidget):
         """)
         layout.addWidget(subject_input)
         
-        # Room input
-        room_label = QLabel("Room")
-        room_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
-        layout.addWidget(room_label)
+        # Section input
+        section_label = QLabel("Section")
+        section_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(section_label)
         
-        room_input = QLineEdit()
-        room_input.setPlaceholderText("")
-        room_input.setStyleSheet("""
+        section_input = QLineEdit()
+        section_input.setPlaceholderText("")
+        section_input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #ccc;
                 border-radius: 5px;
@@ -977,7 +936,7 @@ class MyClassesPage(QWidget):
                 border: 2px solid #4285F4;
             }
         """)
-        layout.addWidget(room_input)
+        layout.addWidget(section_input)
         
         layout.addStretch()
         
@@ -1025,21 +984,26 @@ class MyClassesPage(QWidget):
         """)
         
         def create_section():
-            class_name = class_name_input.text().strip()
-            section = section_input.text().strip()
             subject = subject_input.text().strip()
-            room = room_input.text().strip()
+            section = section_input.text().strip()
             
-            if not class_name:
-                QMessageBox.warning(dialog, "Invalid Input", "Please enter a class name!")
+            if not subject:
+                QMessageBox.warning(dialog, "Invalid Input", "Please enter a subject!")
                 return
+            
+            if not section:
+                QMessageBox.warning(dialog, "Invalid Input", "Please enter a section!")
+                return
+            
+            # Use subject as class name
+            class_name = f"{subject}"
             
             success, message, _ = self.db.add_section(
                 class_name, 
                 self.user_id,
                 section,
                 subject,
-                room
+                ""  # Empty room
             )
             if success:
                 dialog.accept()
@@ -1060,7 +1024,8 @@ class MyClassesPage(QWidget):
         """Update section details"""
         dialog = QDialog(self)
         dialog.setWindowTitle("Update Section")
-        dialog.setFixedSize(500, 550)
+        dialog.setWindowIcon(QIcon("image/system.png"))
+        dialog.setFixedSize(500, 350)
         dialog.setStyleSheet("background-color: white;")
         
         layout = QVBoxLayout(dialog)
@@ -1072,48 +1037,6 @@ class MyClassesPage(QWidget):
         layout.addWidget(title)
         
         layout.addSpacing(10)
-        
-        # Class name input
-        class_name_label = QLabel("Class name (required)")
-        class_name_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
-        layout.addWidget(class_name_label)
-        
-        class_name_input = QLineEdit()
-        class_name_input.setText(section.get('section_name', ''))
-        class_name_input.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 14px;
-                background-color: white;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4285F4;
-            }
-        """)
-        layout.addWidget(class_name_input)
-        
-        # Section input
-        section_label = QLabel("Section")
-        section_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
-        layout.addWidget(section_label)
-        
-        section_input = QLineEdit()
-        section_input.setText(section.get('section', '') or '')
-        section_input.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 14px;
-                background-color: white;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4285F4;
-            }
-        """)
-        layout.addWidget(section_input)
         
         # Subject input
         subject_label = QLabel("Subject")
@@ -1136,14 +1059,14 @@ class MyClassesPage(QWidget):
         """)
         layout.addWidget(subject_input)
         
-        # Room input
-        room_label = QLabel("Room")
-        room_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
-        layout.addWidget(room_label)
+        # Section input
+        section_label = QLabel("Section")
+        section_label.setStyleSheet("font-weight: bold; color: #222; font-size: 13px;")
+        layout.addWidget(section_label)
         
-        room_input = QLineEdit()
-        room_input.setText(section.get('room', '') or '')
-        room_input.setStyleSheet("""
+        section_input = QLineEdit()
+        section_input.setText(section.get('section', '') or '')
+        section_input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #ccc;
                 border-radius: 5px;
@@ -1155,7 +1078,7 @@ class MyClassesPage(QWidget):
                 border: 2px solid #4285F4;
             }
         """)
-        layout.addWidget(room_input)
+        layout.addWidget(section_input)
         
         layout.addStretch()
         
@@ -1203,21 +1126,26 @@ class MyClassesPage(QWidget):
         """)
         
         def update_section():
-            class_name = class_name_input.text().strip()
-            section_value = section_input.text().strip()
             subject = subject_input.text().strip()
-            room = room_input.text().strip()
+            section_value = section_input.text().strip()
             
-            if not class_name:
-                QMessageBox.warning(dialog, "Invalid Input", "Please enter a class name!")
+            if not subject:
+                QMessageBox.warning(dialog, "Invalid Input", "Please enter a subject!")
                 return
+            
+            if not section_value:
+                QMessageBox.warning(dialog, "Invalid Input", "Please enter a section!")
+                return
+            
+            # Use subject as class name
+            class_name = f"{subject}"
             
             success, message = self.db.update_section(
                 section['section_id'], 
                 class_name,
                 section_value,
                 subject,
-                room
+                ""  # Empty room
             )
             if success:
                 self.refresh_current_view()
@@ -1708,6 +1636,7 @@ class MyClassesPage(QWidget):
         """Ipakita lahat ng archived sections"""
         dialog = QDialog(self)
         dialog.setWindowTitle("Archived Sections")
+        dialog.setWindowIcon(QIcon("image/system.png"))
         dialog.setMinimumSize(900, 600)
         dialog.setStyleSheet("background-color: #E7E7DF;")
         

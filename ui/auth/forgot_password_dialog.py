@@ -8,12 +8,12 @@ class ForgotPasswordDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("ClassTrack - Reset Password")
-        self.setWindowIcon(QIcon("image/class.png"))
+        self.setWindowIcon(QIcon("image/system.png"))
         self.setStyleSheet("background-color: white;")
         self.setMinimumWidth(500)
         self.db = DatabaseConnection()
         
-        # Layout
+        # Main layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(20)
@@ -27,12 +27,14 @@ class ForgotPasswordDialog(QDialog):
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("color: #666; font-size: 14px; margin-bottom: 20px;")
         
+        # Email
         email_label = QLabel("Email")
         email_label.setStyleSheet("font-weight: bold; color: #222;")
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("Enter your registered email")
         self.email_input.setStyleSheet("border: 1px solid #ccc; border-radius: 5px; padding: 10px; font-size: 14px;")
         
+        # New Password
         password_label = QLabel("New Password")
         password_label.setStyleSheet("font-weight: bold; color: #222;")
         password_frame = QFrame()
@@ -53,6 +55,7 @@ class ForgotPasswordDialog(QDialog):
         password_layout.addWidget(self.password_input)
         password_layout.addWidget(self.password_eye_btn)
         
+        # Confirm Password
         confirm_label = QLabel("Confirm Password")
         confirm_label.setStyleSheet("font-weight: bold; color: #222;")
         confirm_frame = QFrame()
@@ -74,11 +77,13 @@ class ForgotPasswordDialog(QDialog):
         confirm_layout.addWidget(self.confirm_input)
         confirm_layout.addWidget(self.confirm_eye_btn)
         
+        # Reset Button
         reset_btn = QPushButton("Reset Password")
         reset_btn.setCursor(Qt.PointingHandCursor)
         reset_btn.clicked.connect(self.reset_password)
         reset_btn.setStyleSheet("background-color: #222; color: white; font-weight: bold; border-radius: 20px; padding: 12px; font-size: 15px;")
         
+        # Back to Login Link
         back_frame = QFrame()
         back_layout = QHBoxLayout(back_frame)
         back_layout.setAlignment(Qt.AlignCenter)
@@ -137,12 +142,12 @@ class ForgotPasswordDialog(QDialog):
             self.confirm_eye_btn.setIcon(QIcon("image/eye.png"))
     
     def reset_password(self):
-        # Get inputs
+        # Get input values
         email = self.email_input.text().strip()
         password = self.password_input.text()
         confirm_password = self.confirm_input.text()
         
-        # Validate fields
+        # Validate inputs
         if not all([email, password, confirm_password]):
             QMessageBox.warning(self, "Input Error", "Please fill in all fields")
             return
