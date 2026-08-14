@@ -81,7 +81,3 @@ ClassTrack-System/
 
 - This project was built as part of a school requirement/portfolio project.
 - Database credentials are **not** included in this repo — configure your own local MySQL connection before running.
-
-## 📄 License
-
-This project currently has no license specified. Add one (e.g. MIT) if you plan to make this publicly reusable.
